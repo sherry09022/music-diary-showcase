@@ -1,13 +1,23 @@
 퇴근했는데, 마음은 아직 야근 중.
 
 지금 나에게 필요한 음악을 추천받고,
-음악을 들으며 떠오른 장면을 나만의 일기로 남깁니다.
+선택하면 배경음이 잦아들고 그 곡이 커집니다.
+비 오는 밤, 운전하며 음악을 감상합니다.
+“음악을 듣고 떠오르는 이미지가 있을까요?”
+떠오른 장면을 나만의 일기로 남깁니다.
 
 음악일기 · Music Diary
 현대자동차 차량용 앱 개발 공모전 참가자 한수진
 
-실사 주행 영상 위에 차창 대화를 합성한 콘셉트 릴스입니다.
-승차·하차와 심상에는 AI 이미지를 사용했고, 대화·일기 화면은 시연용 그래픽입니다. 실제 앱 기능을 촬영한 영상은 아닙니다.
+비 오는 밤의 도입과 주행은 실사 영상이며, 도입에 인물 정지사진은 사용하지 않았습니다.
+하차와 심상에는 AI 정지 이미지를 사용했고, 대화·음악 재생 표시·일기 화면은 시연용 그래픽입니다. 실제 앱 기능을 촬영한 영상은 아니며 별도 음성 나레이션은 없습니다.
+
+영상 보기: https://sherry09022.github.io/music-diary-showcase/?v=live-intro-20261115
+
+Opening footage: Teju / Pexels
+Source: https://www.pexels.com/video/rainy-night-street-with-blurred-lights-35180823/
+License: https://www.pexels.com/license/
+비 오는 밤 실사 영상 발췌·도입 문구 합성.
 
 Driving footage: Ömer Safak / Pexels
 Source: https://www.pexels.com/video/nighttime-rainy-highway-traffic-scene-35584072/
@@ -18,6 +28,7 @@ Music: ‘Reverie’ by Scott Buckley — released under CC-BY 4.0.
 www.scottbuckley.com.au
 Source: https://www.scottbuckley.com.au/library/reverie/
 License: https://creativecommons.org/licenses/by/4.0/
-음원 일부 발췌 및 음량·페이드 편집.
+원곡 50–83초 발췌, 영상 27초부터 재생. 음량·페이드 편집.
+앞부분의 배경음과 빗소리·도입 효과음은 직접 합성했습니다.
 
 #HMG차량용앱개발공모전 #PleosAppMarket #음악일기
