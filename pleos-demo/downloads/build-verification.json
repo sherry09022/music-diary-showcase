@@ -1,14 +1,14 @@
 {
-  "commit": "e0b4136e0c6ff84117284006714453ca2fa2db92",
-  "ci": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43710219649",
-  "apkBytes": 33992673,
-  "sha256": "5636fe0557fbadfeea1f70275fe20ac8048f873c75350ecf42ed324453ea523e",
+  "commit": "e00807c9e8904ccc5c35b4d13057db66268c4fd3",
+  "ci": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43710846877",
+  "apkBytes": 33992769,
+  "sha256": "acf3dbd209e89a362e4082e45218d8aecd50a5e49e1f3446f9072cdd1418938b",
   "assembleDebug": "passed",
   "lintDebug": {
     "errors": 0,
     "warnings": 4
   },
-  "webRegressionTests": 11,
+  "webRegressionTests": 13,
   "runtimeVerified": false,
   "microphoneVerified": false,
   "vehicleVerified": false,

@@ -8,7 +8,7 @@
 
 - [Pleos 차량 환경용 데모 APK](downloads/music-diary-pleos-debug.apk) · [SHA-256](downloads/SHA256SUMS)
 - [실행 화면 시연 영상](watch.html) · [빌드 검증 기록](downloads/build-verification.json)
-- [실제 SDK 컴파일·lint 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43710219649): 코드 `e0b4136`, 오류 0개·경고 4개, 웹 회귀 11개 통과.
+- [실제 SDK 컴파일·lint 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43710846877): 코드 `e00807c`, 오류 0개·경고 4개, 웹 회귀 13개 통과.
 
 APK는 Pleos 서비스가 있는 차량용 Android 환경을 위한 **debug 데모**입니다. 일반 스마트폰용 설치 파일이나 App Market 배포판이 아닙니다. 실제 Pleos 런타임·마이크·스피커 검증은 아직 완료하지 않았습니다. [별도 에뮬레이터 실행 절차](android/EMULATOR.md)는 약관 확인 후 수동으로 진행합니다.
 

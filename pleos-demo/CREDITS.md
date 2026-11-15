@@ -28,4 +28,4 @@
 - [Vehicle SDK](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/intro)
 - [Android CarUxRestrictions](https://developer.android.com/reference/android/car/drivingstate/CarUxRestrictions)
 
-공식 문서 확인일: 2026-11-15. SDK는 공식 Maven 저장소에서 빌드 시 내려받으며 이 공개 저장소에 바이너리를 복사하지 않습니다.
+공식 문서 확인일: 2026-11-15. SDK는 공식 Maven 저장소에서 빌드 시 내려받습니다. SDK AAR 원본과 에뮬레이터 시스템 이미지 자체는 재배포하지 않으며, 설치용 APK에는 실행에 필요한 SDK 라이브러리가 포함됩니다.
