@@ -4,15 +4,16 @@
 선택하면 배경음이 잦아들고 그 곡이 커집니다.
 비 오는 밤, 운전하며 음악을 감상합니다.
 “음악을 듣고 떠오르는 이미지가 있을까요?”
-떠오른 장면을 나만의 일기로 남깁니다.
+“음악을 듣고 포근한 이불의 느낌이 생각났어.”
+떠오른 느낌을 그림과 일기로 남기고, 차에서 내립니다.
 
 음악일기 · Music Diary
 현대자동차 차량용 앱 개발 공모전 참가자 한수진
 
-비 오는 밤의 도입과 주행은 실사 영상이며, 도입에 인물 정지사진은 사용하지 않았습니다.
-하차와 심상에는 AI 정지 이미지를 사용했고, 대화·음악 재생 표시·일기 화면은 시연용 그래픽입니다. 실제 앱 기능을 촬영한 영상은 아니며 별도 음성 나레이션은 없습니다.
+도입·주행·하차는 실사 영상입니다. 일기 시연에 담긴 포근한 이불의 심상 그림은 AI 이미지입니다.
+대화·음악 재생 표시·일기 화면은 시연용 그래픽이며, 대사는 자막으로 표시합니다. 실제 앱 기능을 촬영한 영상은 아니며 별도 음성 나레이션은 없습니다.
 
-영상 보기: https://sherry09022.github.io/music-diary-showcase/?v=live-intro-20261115
+영상 보기: https://sherry09022.github.io/music-diary-showcase/?v=live-exit-20261115
 
 Opening footage: Teju / Pexels
 Source: https://www.pexels.com/video/rainy-night-street-with-blurred-lights-35180823/
@@ -23,6 +24,11 @@ Driving footage: Ömer Safak / Pexels
 Source: https://www.pexels.com/video/nighttime-rainy-highway-traffic-scene-35584072/
 License: https://www.pexels.com/license/
 색보정·슬로모션·차창 대화 합성.
+
+Exit footage: Ron Lach / Pexels
+Source: https://www.pexels.com/video/a-woman-getting-out-of-a-car-9520614/
+License: https://www.pexels.com/license/
+실제 하차 동작 발췌·크롭·속도 조절·색보정.
 
 Music: ‘Reverie’ by Scott Buckley — released under CC-BY 4.0.
 www.scottbuckley.com.au

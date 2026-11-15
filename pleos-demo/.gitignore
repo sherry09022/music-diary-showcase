@@ -1,0 +1,9 @@
+# This demo intentionally distributes only the credited, licensed excerpts and
+# its prerecorded demonstration narration. Keep repository-wide audio rules.
+!assets/reverie.mp3
+!assets/hiraeth.mp3
+!assets/filaments.mp3
+!assets/voice-*.mp3
+android/.gradle/
+android/**/build/
+android/local.properties

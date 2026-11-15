@@ -1,0 +1,59 @@
+name: Pleos native demo
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pleos-demo/**'
+      - '.github/workflows/pleos-demo.yml'
+  pull_request:
+    paths:
+      - 'pleos-demo/**'
+      - '.github/workflows/pleos-demo.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pleos-demo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: pleos-demo/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Install Android compilation platform
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Validate browser flow
+        working-directory: pleos-demo
+        run: |
+          node --test *.test.mjs
+      - name: Compile actual Pleos SDK integration and lint
+        run: ./gradlew --no-daemon :app:assembleDebug :app:lintDebug --stacktrace
+      - name: Upload installable debug APK and lint report
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-diary-pleos-debug
+          path: |
+            pleos-demo/android/app/build/outputs/apk/debug/*.apk
+            pleos-demo/android/app/build/reports/lint-results-debug.html
+          retention-days: 14
+      - name: Record verification scope
+        run: |
+          echo '### Pleos native demo' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Compiled against official Pleos TTS/STT 3.3.1 and Vehicle 2.3.2.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This workflow does not boot the Pleos emulator or verify real vehicle/microphone services.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The APK is a debug evaluation build, not an approved Pleos App Market release.' >> "$GITHUB_STEP_SUMMARY"
