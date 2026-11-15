@@ -6,14 +6,14 @@
 
 | 기능 | 네이티브 구현 | 검증 상태 |
 | --- | --- | --- |
-| 음성 합성 | TextToSpeech 3.3.1, `Mode.ON_DEVICE` | CI 컴파일 통과. 실제 음성 서비스 실행은 미검증 |
-| 음성 인식 | SpeechToText 3.3.1, `Mode.ON_DEVICE`, 중간·최종 텍스트 전달 | CI 컴파일 통과. 실제 마이크 인식은 미검증 |
-| 차량 정보 | Vehicle 2.3.2, capability 확인 후 브레이크 페달 조회 | CI 컴파일 통과. 실제 Pleos 차량 서비스 실행은 미검증 |
-| 화면 제한 | 표준 AAOS `CarUxRestrictionsManager` 조회·변경 구독 | CI 컴파일 통과. 실제 Car 서비스 실행은 미검증 |
-| 음악 | 앱에 포함된 공개 라이선스 음원, Android MediaPlayer 브리지 | Pleos 장치 출력은 미검증 |
-| 빌드 | GitHub Actions에서 `assembleDebug` + `lintDebug` | 2026-11-15, 커밋 `e00807c` [실행 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43710846877). 이후 수정본은 [최신 실행](https://github.com/sherry09022/music-diary-showcase/actions/workflows/pleos-demo.yml)에서 확인 |
+| 음성 합성 | TextToSpeech 3.3.1, `Mode.ON_DEVICE` | 실제 에뮬레이터에서 초기화 및 `ko-KR` PCM 생성·AudioTrack 기록 완료 확인. 물리적 소리 출력은 미검증 |
+| 음성 인식 | SpeechToText 3.3.1, `Mode.ON_DEVICE`, 중간·최종 텍스트 전달 | 실제 SDK 초기화 확인. 마이크 음성 인식은 미검증 |
+| 차량 정보 | Vehicle 2.3.2, capability 확인 후 브레이크 페달 조회 | 실제 에뮬레이터 서비스 연결 확인. 실차 동작은 미검증 |
+| 화면 제한 | 표준 AAOS `CarUxRestrictionsManager` 조회·변경 구독 | 실제 에뮬레이터에서 `uxRestricted: false`, `activeRestrictions: 0` 확인 |
+| 음악·일기 | Android MediaPlayer와 WebView 일기 저장 | 계측이 연령 선택 다음 화면에서 중단되어 본 감상·일기 저장까지 미검증 |
+| 빌드 | GitHub Actions에서 `assembleDebug` + `lintDebug` | APK 소스 `ee6ac13` [실행 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43719447420), 웹 회귀 18개 통과 |
 
-검증한 `e00807c`의 debug APK는 33,992,769바이트이고 SHA-256은 `acf3dbd209e89a362e4082e45218d8aecd50a5e49e1f3446f9072cdd1418938b`입니다. Lint는 오류 없이 경고 4개로 통과했습니다(최신 API 대상 여부, 더 새 WebKit 라이브러리, 권장되지 않는 API, 데이터 추출 규칙). 이 기록은 해당 커밋의 결과이며 이후 APK에 같은 해시를 적용하지 않습니다.
+공개 debug APK의 소스는 `ee6ac13192466ea45ae5e3e47537b5e77a002b7b`이며, 파일은 33,993,141바이트입니다. SHA-256은 `1577f0c70c557082da23a18fd47bc6ae2e32b090569fd34b177e0af8108a5e53`입니다. Lint는 오류 0개·경고 10개로 통과했습니다. 이 빌드와 실제 실행 검증의 커밋·범위는 [검증 기록](../downloads/build-verification.json)에 각각 기록하며, 이후 APK에 같은 해시를 적용하지 않습니다.
 
 **브레이크 페달을 밟았다는 값으로 주차 상태를 추측하지 않습니다.** 이 SDK 버전의 공개 Brake 인터페이스에는 주차 브레이크 조회가 없습니다. `parked`는 항상 `null`로 전달합니다. 폼·일기 화면 허용 여부는 별도로 연결한 표준 AAOS `CarUxRestrictionsManager`의 `isRequiresDistractionOptimization()` 결과를 따릅니다. `uxRestricted === false`일 때만 전체 화면을 허용하고, 연결 전·오류·연결 해제 상태는 `null`로 보내 제한을 유지합니다. 제한이 켜지면 `activeRestrictions`의 NO_KEYBOARD / NO_SETUP / NO_TEXT_MESSAGE / NO_VOICE_TRANSCRIPTION 등 비트도 준수해야 합니다. 이 앱은 실제 차량에서 운전자 주의 분산 검증을 마치지 않았으며 manifest에 distractionOptimized로 승인된 것처럼 선언하지 않았습니다. 이동 중 OS가 앱 화면을 차단할 수 있습니다.
 
@@ -44,9 +44,9 @@ adb shell am start -n ai.projectshu.musicdiary.pleosdemo/.MainActivity
 6. 차량 capability 실패·마이크 거절·서비스 미설치 때 미연결 상태와 복구 안내를 확인합니다.
 7. 앱을 백그라운드로 보내면 마이크·음악·TTS가 멈추는지 확인합니다.
 
-이 Mac에는 Android SDK와 Pleos 에뮬레이터를 설치하지 않았습니다. 공개 GitHub Actions의 [에뮬레이터 실행 43714805239](https://github.com/sherry09022/music-diary-showcase/actions/runs/43714805239)에서는 **공식 Pleos Connect 2.1.0 OS 부팅**을 확인했지만, `android.car` 필수 공유 라이브러리 선언 때문에 APK 설치가 실패했습니다. 따라서 이 결과는 앱 실행·SDK 초기화·전체 대화 흐름 검증을 의미하지 않습니다.
+공개 GitHub Actions의 [실제 실행 43720666159](https://github.com/sherry09022/music-diary-showcase/actions/runs/43720666159), 커밋 `bce915ef9d0c0e0f042eda86a362e8f03d9a23bb`에서 공식 Pleos OS와 앱 실행, TTS/STT/Vehicle 준비 및 AAOS UX 허용 상태를 확인했습니다. 로그에서는 한국어 ON_DEVICE 음성의 PCM 생성과 AudioTrack 최종 기록·종료도 확인했습니다. 이는 실제 스피커로 들리는 소리를 검증한 결과는 아닙니다.
 
-이 설치 문제에 대응해 Gradle과 Manifest의 `android.car`를 선택 사항으로 지정했습니다. 실제 클래스 로드를 확인한 뒤 기존 CarUxRestrictions 서비스에 연결하며, 클래스 로드나 서비스 연결에 실패하면 UX 상태는 `null`로 유지합니다. 주차나 UX 허용 상태를 임의로 설정하지 않습니다. 이 수정의 실제 앱 설치·실행은 다음 에뮬레이터 실행에서 확인해야 합니다. 차량 배포 승인, 운전자 주의 분산 검토, 실제 장치 오디오 검증은 아직 완료하지 않았습니다.
+전체 UI 계측은 ‘30대’를 누른 뒤 성별 화면으로 전환되지 않아 assertion으로 실패했습니다. 음악 감상·일기 저장 단계에는 도달하지 않았습니다. 실제 마이크 인식·물리 스피커 출력·실차 동작 및 차량 배포 승인은 미검증입니다. 후속 실행의 결과로 이 범위를 갱신해야 합니다.
 
 ## 웹 브리지 계약
 

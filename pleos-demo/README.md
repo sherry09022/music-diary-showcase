@@ -8,9 +8,10 @@
 
 - [Pleos 차량 환경용 데모 APK](downloads/music-diary-pleos-debug.apk) · [SHA-256](downloads/SHA256SUMS)
 - [실행 화면 시연 영상](watch.html) · [빌드 검증 기록](downloads/build-verification.json)
-- [실제 SDK 컴파일·lint 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43710846877): 코드 `e00807c`, 오류 0개·경고 4개, 웹 회귀 13개 통과.
+- [실제 SDK 컴파일·lint 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43719447420): APK 소스 `ee6ac13`, 오류 0개·경고 10개, 웹 회귀 18개 통과.
+- [실제 Pleos 실행 검증](https://github.com/sherry09022/music-diary-showcase/actions/runs/43720666159): OS·앱 실행, TTS/STT/Vehicle 준비, AAOS UX 허용 상태와 `ko-KR` ON_DEVICE 음성의 PCM 생성·AudioTrack 기록 완료를 확인했습니다. 전체 UI 여정은 연령 선택 후 다음 화면 전환 검사에서 실패했습니다.
 
-APK는 Pleos 서비스가 있는 차량용 Android 환경을 위한 **debug 데모**입니다. 일반 스마트폰용 설치 파일이나 App Market 배포판이 아닙니다. 실제 Pleos 런타임·마이크·스피커 검증은 아직 완료하지 않았습니다. [별도 에뮬레이터 실행 절차](android/EMULATOR.md)는 약관 확인 후 수동으로 진행합니다.
+APK는 Pleos 서비스가 있는 차량용 Android 환경을 위한 **debug 데모**입니다. 일반 스마트폰용 설치 파일이나 App Market 배포판이 아닙니다. 네이티브 음악 감상·일기 저장까지의 전체 흐름, 실제 마이크·스피커·실차 동작은 아직 미검증입니다. [별도 에뮬레이터 실행 절차](android/EMULATOR.md)는 약관 확인 후 수동으로 진행합니다.
 
 ## 바로 체험하기
 
@@ -33,7 +34,7 @@ APK는 Pleos 서비스가 있는 차량용 Android 환경을 위한 **debug 데�
 | 심상 그림 | 미리 제작한 포근한 이불 예시. 다른 내용이면 글만 저장 | 동일. 실시간 생성 API 호출 없음 |
 | 일기 | 이 브라우저의 localStorage | 앱 WebView의 localStorage |
 
-**웹 영상은 Pleos SDK 실행 영상이 아닙니다.** 화면에 이 구분을 계속 표시합니다. 네이티브 소스는 공식 SDK 바이너리의 실제 API 서명을 확인해 작성했고, 공개 CI에서 컴파일·lint를 수행합니다. 실제 Pleos 에뮬레이터/차량에서 서비스 연결·마이크·스피커를 검증한 상태는 아닙니다. APK 설치 및 실제 장치 검증은 [Android 안내](android/README.md)를 참고하세요.
+**웹 영상은 Pleos SDK 실행 영상이 아닙니다.** 화면에 이 구분을 계속 표시합니다. 네이티브 앱은 공식 Pleos 에뮬레이터에서 실행·SDK 준비·음성 합성 데이터 처리를 확인했지만, 실제 음성이 들리는지와 마이크 인식, 음악 감상·일기 저장까지의 전체 여정은 검증하지 못했습니다. 확인 범위와 APK별 빌드 정보는 [Android 안내](android/README.md)와 [검증 기록](downloads/build-verification.json)에 구분했습니다.
 
 브레이크 페달을 주차 판단에 사용하지 않습니다. 네이티브의 물리적 `parked` 값은 알 수 없는 상태이며, 전체 UI 허용은 AAOS의 `uxRestricted === false`일 때만 가능합니다. 주행 시 전방에 집중하는 음악 감상만 제시하고 몸에 몰입하는 안내·심상 이미지·일기 편집은 제한합니다. 차량의 운전자 주의 분산 인증이나 Pleos App Market 승인을 받은 제품은 아닙니다.
 

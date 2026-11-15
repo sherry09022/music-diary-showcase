@@ -1,17 +1,52 @@
 {
-  "commit": "e00807c9e8904ccc5c35b4d13057db66268c4fd3",
-  "ci": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43710846877",
-  "apkBytes": 33992769,
-  "sha256": "acf3dbd209e89a362e4082e45218d8aecd50a5e49e1f3446f9072cdd1418938b",
+  "schemaVersion": 2,
+  "commit": "ee6ac13192466ea45ae5e3e47537b5e77a002b7b",
+  "ci": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43719447420",
+  "apkBytes": 33993141,
+  "sha256": "1577f0c70c557082da23a18fd47bc6ae2e32b090569fd34b177e0af8108a5e53",
   "assembleDebug": "passed",
   "lintDebug": {
     "errors": 0,
-    "warnings": 4
+    "warnings": 10
   },
-  "webRegressionTests": 13,
-  "runtimeVerified": false,
+  "webRegressionTests": 18,
+  "runtimeEvidence": {
+    "run": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43720666159",
+    "commit": "bce915ef9d0c0e0f042eda86a362e8f03d9a23bb",
+    "environment": "official Pleos Connect 2.1.0 API 34 x86_64 emulator, silent Linux runner",
+    "osBootVerified": true,
+    "appLaunchVerified": true,
+    "sdkInitialization": {
+      "ttsReady": true,
+      "sttReady": true,
+      "vehicleConnected": true,
+      "uxRestricted": false,
+      "activeRestrictions": 0
+    },
+    "ttsOnDevice": {
+      "locale": "ko-KR",
+      "pcmGenerationVerified": true,
+      "audioTrackWriteCompletionVerified": true,
+      "audibleOutputVerified": false
+    },
+    "uiJourney": {
+      "passed": false,
+      "lastConfirmedScreen": "age selection",
+      "failure": "After selecting 30대, the next gender-selection UI did not appear; assertion failed.",
+      "musicPlaybackVerified": false,
+      "diarySaveVerified": false,
+      "diaryReopenVerified": false
+    },
+    "evidenceFiles": [
+      "native-sdk-status.json",
+      "logcat-continuous.txt",
+      "journey-verification.json",
+      "journey-evidence/result.json"
+    ]
+  },
   "microphoneVerified": false,
-  "vehicleVerified": false,
+  "physicalSpeakerVerified": false,
+  "physicalVehicleVerified": false,
   "recordedVideo": "web-simulator",
   "apiKeysRequired": false
 }
