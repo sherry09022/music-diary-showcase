@@ -19,7 +19,7 @@ concurrency:
 jobs:
   emulator:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 60
     env:
       EVIDENCE: ${{ github.workspace }}/pleos-evidence
       APP_ID: ai.projectshu.musicdiary.pleosdemo
@@ -108,7 +108,7 @@ jobs:
             exit 1
           fi
       - name: Install or validate licensed Pleos image
-        timeout-minutes: 12
+        timeout-minutes: 30
         run: |
           # Acceptance is permitted only after the explicit workflow input gate above.
           # sdkmanager performs official archive/checksum validation; no SDK is redistributed.

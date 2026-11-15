@@ -15,7 +15,7 @@ Actions → **Pleos emulator experiment (silent)** → Run workflow에서 `ackno
 - [공식 Pleos 설치 문서](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator)가 공개한 Linux 저장소만 사용합니다. `sdkmanager`에서 `system-images;android-34;pleos_car_emulator;x86_64`가 발견되지 않으면 중단하며 일반 Android 이미지로 바꾸지 않습니다.
 - [Pleos 설정 문서](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/configure-pleos-connect-emulator)는 외장 GPU를 요구합니다. 무료 runner의 **소프트웨어 렌더링 지원은 Pleos가 보장하지 않습니다.** 설치 실패, 부팅 실패, 검은 화면도 실험 결과로 남깁니다.
 - Android의 현재 지원 옵션인 [`-gpu swiftshader`](https://developer.android.com/studio/run/emulator-acceleration)와 `-no-window`를 사용합니다. `swiftshader_indirect`는 emulator 36.4.9부터 deprecated입니다. `-no-snapshot`으로 cold boot하고, KVM이 없으면 중단합니다. CPU 수는 실제 SDK 준비 확인에 성공했던 2코어 구성을 기준으로, runner의 실제 `nproc` 값과 2 중 작은 값을 사용하며 `emulator-cores.txt`에 기록합니다. 소프트웨어 그래픽과 초기 음성 모델 준비를 위한 호스트 CPU 여유를 남깁니다.
-- ZIP만 약 4.09GB이며 압축 해제와 빌드에 추가 디스크가 필요합니다. runner 공간이 부족하면 설치가 실패할 수 있습니다. 유료 GPU·larger runner로 자동 전환하지 않습니다.
+- ZIP만 약 4.09GB이며 압축 해제와 빌드에 추가 디스크가 필요합니다. 공식 이미지 다운로드·설치 단계는 느린 전송을 고려해 최대 30분 기다립니다. runner 공간이 부족하면 설치가 실패할 수 있습니다. 유료 GPU·larger runner로 자동 전환하지 않습니다.
 - 새로 생성한 AVD에서 저장소의 해당 커밋을 빌드·설치합니다. 개인 계정에 로그인하지 않으며 사용자 일기나 실제 마이크 입력을 넣지 않습니다.
 - `-no-audio`로 음소거합니다. 음악·마이크·TTS의 실제 소리는 검증하지 않습니다. [Android screenrecord](https://developer.android.com/tools/adb#screenrecord)도 오디오를 녹음하지 않습니다.
 
@@ -80,7 +80,7 @@ adb exec-out run-as "$APP_ID" --user "$PLEOS_ACTIVE_USER" \
 
 준비 단계가 실패하면 UI 여정은 실행하지 않습니다. 계측 단계가 실패하거나 제한 시간에 도달하면 성공으로 바꾸지 않고, 확보된 부분 캡처·로그·결과를 남깁니다. 실패 시 `image-install.log`, `emulator.log`, `logcat.txt`, 서비스 상태 및 계측 로그를 살펴보세요.
 
-10분 안에 부팅되지 않으면 중단합니다. UI 계측 명령은 600초, 여정 녹화는 파일당 최대 180초씩 네 세그먼트 이내, 전체 작업은 최대 35분으로 제한합니다. 공개 저장소의 표준 Linux runner를 사용하며 유료 GPU나 AI API로 자동 전환하지 않습니다. 로그·JSON·화면 캡처·무음 영상은 7일간 artifact로 보관합니다. **시스템 이미지, SDK AAR 원본, 앱·계측 APK는 이 workflow의 공개 artifact에 포함하지 않습니다.** 자동 출시나 App Market 제출도 하지 않습니다.
+10분 안에 부팅되지 않으면 중단합니다. UI 계측 명령은 600초, 여정 녹화는 파일당 최대 180초씩 네 세그먼트 이내, 전체 작업은 최대 60분으로 제한합니다. 공개 저장소의 표준 Linux runner를 사용하며 유료 GPU나 AI API로 자동 전환하지 않습니다. 로그·JSON·화면 캡처·무음 영상은 7일간 artifact로 보관합니다. **시스템 이미지, SDK AAR 원본, 앱·계측 APK는 이 workflow의 공개 artifact에 포함하지 않습니다.** 자동 출시나 App Market 제출도 하지 않습니다.
 
 ## 공식 근거
 
