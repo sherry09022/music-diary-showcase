@@ -4,6 +4,14 @@
 
 기존 음악일기 iPhone 앱, 운영 웹앱, 홍보 릴스와 분리된 공모전용 개발 데모입니다. 이 폴더만으로 동작하며 운영 앱의 계정·인증키·사용자 데이터를 포함하지 않습니다.
 
+## 설치 파일과 검증
+
+- [Pleos 차량 환경용 데모 APK](downloads/music-diary-pleos-debug.apk) · [SHA-256](downloads/SHA256SUMS)
+- [실행 화면 시연 영상](watch.html) · [빌드 검증 기록](downloads/build-verification.json)
+- [실제 SDK 컴파일·lint 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43710219649): 코드 `e0b4136`, 오류 0개·경고 4개, 웹 회귀 11개 통과.
+
+APK는 Pleos 서비스가 있는 차량용 Android 환경을 위한 **debug 데모**입니다. 일반 스마트폰용 설치 파일이나 App Market 배포판이 아닙니다. 실제 Pleos 런타임·마이크·스피커 검증은 아직 완료하지 않았습니다. [별도 에뮬레이터 실행 절차](android/EMULATOR.md)는 약관 확인 후 수동으로 진행합니다.
+
 ## 바로 체험하기
 
 웹페이지의 **전체 시연**을 누르면 취향 → 상태와 감정 → 음악에서 원하는 느낌 → 몸의 감각 → 세 곡 맛보기 → 곡 선택 → 감상 → 주차 후 심상 기록 → 일기 저장을 한 번에 볼 수 있습니다.

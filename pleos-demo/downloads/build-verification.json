@@ -1,0 +1,17 @@
+{
+  "commit": "e0b4136e0c6ff84117284006714453ca2fa2db92",
+  "ci": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43710219649",
+  "apkBytes": 33992673,
+  "sha256": "5636fe0557fbadfeea1f70275fe20ac8048f873c75350ecf42ed324453ea523e",
+  "assembleDebug": "passed",
+  "lintDebug": {
+    "errors": 0,
+    "warnings": 4
+  },
+  "webRegressionTests": 11,
+  "runtimeVerified": false,
+  "microphoneVerified": false,
+  "vehicleVerified": false,
+  "recordedVideo": "web-simulator",
+  "apiKeysRequired": false
+}

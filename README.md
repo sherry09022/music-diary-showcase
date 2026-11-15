@@ -13,6 +13,7 @@
 - [녹화한 웹 시연 영상](https://sherry09022.github.io/music-diary-showcase/pleos-demo/watch.html)
 - [차량용 웹 데모 체험](https://sherry09022.github.io/music-diary-showcase/pleos-demo/)
 - [별도 소스·SDK 구성](pleos-demo/) · [Android 빌드 검증](https://github.com/sherry09022/music-diary-showcase/actions/workflows/pleos-demo.yml)
+- [Pleos 차량 환경용 데모 APK](https://sherry09022.github.io/music-diary-showcase/pleos-demo/downloads/music-diary-pleos-debug.apk)
 
 `pleos-demo/`는 기존 앱과 릴스에 영향을 주지 않는 별도 프로젝트입니다. 웹은 차량값을 모의로 사용하는 실행 가능한 체험판이며, Android 프로젝트는 실제 Pleos STT·TTS·Vehicle SDK를 사용합니다. 실제 차량/플레오스 에뮬레이터 실행 여부는 해당 폴더의 검증 안내를 참고하세요.
 
