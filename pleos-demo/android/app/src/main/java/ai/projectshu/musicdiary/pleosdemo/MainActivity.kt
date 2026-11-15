@@ -8,6 +8,7 @@ import android.car.drivingstate.CarUxRestrictions
 import android.car.drivingstate.CarUxRestrictionsManager
 import android.content.ComponentName
 import android.content.ServiceConnection
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -117,6 +118,9 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         audioManager = getSystemService(AudioManager::class.java)
+        WebView.setWebContentsDebuggingEnabled(
+            (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        )
         webView = WebView(this)
         setContentView(webView)
         val loader = WebViewAssetLoader.Builder()

@@ -81,9 +81,14 @@ jobs:
           (directory / 'repositories.cfg').write_text('count=1\nsrc00=' + url + '\ndisp00=Pleos Connect official image\nenabled00=true\n')
           print('Official API 34 x86_64 metadata verified; archive bytes:', result['archiveBytes'])
           PY
-          sdkmanager --list > "$EVIDENCE/sdk-packages.log" 2>&1
+          # sdkmanager 16.0 supports this extra repository provider directly.
+          # It supplements (never replaces) the built-in Google repositories.
+          printf 'sdkmanager extra provider: %s\n' "$PLEOS_REPOSITORY" | tee "$EVIDENCE/sdk-extra-provider.txt"
+          sdkmanager --version >> "$EVIDENCE/sdk-extra-provider.txt" 2>&1
+          SDKMANAGER_OPTS="-Dandroid.sdk.custom.url=$PLEOS_REPOSITORY" sdkmanager --list > "$EVIDENCE/sdk-packages.log" 2>&1
           if ! grep -F "$PLEOS_IMAGE" "$EVIDENCE/sdk-packages.log"; then
-            echo '::error::Official Pleos image was not discovered by sdkmanager. No substitute image will be used.'
+            tail -n 30 "$EVIDENCE/sdk-packages.log"
+            echo "::error::Official Pleos image was not discovered via extra provider $PLEOS_REPOSITORY. See sdk-extra-provider.txt and sdk-packages.log; no substitute image will be used."
             exit 1
           fi
       - name: Install licensed Pleos image and emulator
@@ -91,9 +96,12 @@ jobs:
         run: |
           # Acceptance is permitted only after the explicit workflow input gate above.
           # sdkmanager performs official archive/checksum validation; no SDK is redistributed.
+          set +e
           set +o pipefail
-          yes | sdkmanager "$PLEOS_IMAGE" emulator > "$EVIDENCE/image-install.log" 2>&1
+          printf 'sdkmanager extra provider: %s\n' "$PLEOS_REPOSITORY" > "$EVIDENCE/image-install.log"
+          yes | SDKMANAGER_OPTS="-Dandroid.sdk.custom.url=$PLEOS_REPOSITORY" sdkmanager "$PLEOS_IMAGE" emulator >> "$EVIDENCE/image-install.log" 2>&1
           result=${PIPESTATUS[1]}
+          set -e
           set -o pipefail
           if [ "$result" -ne 0 ]; then
             tail -n 35 "$EVIDENCE/image-install.log"
@@ -105,7 +113,11 @@ jobs:
         run: |
           emulator -version > "$EVIDENCE/emulator-version.txt" 2>&1
           avdmanager list device > "$EVIDENCE/available-device-profiles.txt"
-          printf 'no\n' | avdmanager create avd --force --name pleos_ci --package "$PLEOS_IMAGE" > "$EVIDENCE/avd-create.log" 2>&1
+          if ! grep -F '"Pleos_Connect_v2_0"' "$EVIDENCE/available-device-profiles.txt"; then
+            echo '::error::Official Pleos_Connect_v2_0 hardware profile is absent. Refusing a generic device substitute.'
+            exit 1
+          fi
+          printf 'no\n' | avdmanager create avd --force --name pleos_ci --package "$PLEOS_IMAGE" --device Pleos_Connect_v2_0 > "$EVIDENCE/avd-create.log" 2>&1
           cp "$HOME/.android/avd/pleos_ci.avd/config.ini" "$EVIDENCE/avd-config.ini"
           if [ ! -e /dev/kvm ]; then
             echo '::error::KVM unavailable on this runner; stopping instead of unbounded software CPU emulation.'
@@ -136,22 +148,37 @@ jobs:
           echo '::error::Pleos cold boot did not complete within 10 minutes. This is not a verified runtime.'
           exit 1
       - name: Install APK and capture native app startup (silent video)
+        id: capture
         timeout-minutes: 3
         run: |
           adb install -r pleos-demo/android/app/build/outputs/apk/debug/app-debug.apk > "$EVIDENCE/apk-install.log"
-          adb shell screenrecord --time-limit 35 /sdcard/pleos-startup.mp4 > "$EVIDENCE/screenrecord.log" 2>&1 &
+          adb shell screenrecord --size 1280x720 --bit-rate 4000000 --time-limit 35 /sdcard/pleos-startup.mp4 > "$EVIDENCE/screenrecord.log" 2>&1 &
           recorder=$!
           adb shell am start -W -n "$APP_ID/.MainActivity" > "$EVIDENCE/app-launch.txt"
           sleep 15
-          adb exec-out screencap -p > "$EVIDENCE/app-screen.png"
+          capture_failed=false
+          if ! adb exec-out screencap -p > "$EVIDENCE/app-screen.png"; then
+            capture_failed=true
+            echo '::warning::Screenshot failed; native SDK verification will still run.'
+          fi
           adb shell dumpsys activity activities > "$EVIDENCE/activity.txt"
           adb shell dumpsys activity services "$APP_ID" > "$EVIDENCE/app-services.txt"
           adb shell service list > "$EVIDENCE/system-services.txt"
           adb shell dumpsys package "$APP_ID" > "$EVIDENCE/app-package.txt"
-          adb shell uiautomator dump /sdcard/pleos-window.xml > "$EVIDENCE/ui-dump.log" 2>&1 || true
+          adb shell dumpsys package ai.pleos.playground.caas > "$EVIDENCE/caas-package.txt" 2>&1 || true
+          adb shell dumpsys package ai.pleos.playground.service.vehicle > "$EVIDENCE/vehicle-service-package.txt" 2>&1 || true
+          adb shell dumpsys webviewupdate > "$EVIDENCE/webview-provider.txt" 2>&1 || true
+          timeout 25 adb shell uiautomator dump /sdcard/pleos-window.xml > "$EVIDENCE/ui-dump.log" 2>&1 || true
           adb pull /sdcard/pleos-window.xml "$EVIDENCE/app-window.xml" || true
           wait "$recorder" || true
-          adb pull /sdcard/pleos-startup.mp4 "$EVIDENCE/pleos-native-startup-silent.mp4"
+          if ! adb pull /sdcard/pleos-startup.mp4 "$EVIDENCE/pleos-native-startup-silent.mp4"; then
+            capture_failed=true
+            echo '::warning::Silent video capture failed; native SDK verification will still run.'
+          fi
+          if [ ! -s "$EVIDENCE/app-screen.png" ] || [ ! -s "$EVIDENCE/pleos-native-startup-silent.mp4" ]; then
+            capture_failed=true
+          fi
+          printf '{"captureFailed":%s,"audioRecorded":false,"visualReviewRequired":true}\n' "$capture_failed" > "$EVIDENCE/capture-status.json"
           grep -F "$APP_ID/.MainActivity" "$EVIDENCE/activity.txt" > "$EVIDENCE/activity-match.txt"
       - name: Read real native SDK readiness through debug WebView
         timeout-minutes: 2
@@ -186,6 +213,16 @@ jobs:
           fs.writeFileSync(`${dest}/verification.json`, JSON.stringify({bootCompleted:true,nativeStatusRead:true,sdkReady:ready,visualReviewRequired:true,audioVerified:false,microphoneVerified:false,fullConversationVerified:false}, null, 2));
           if (!ready) throw new Error('App launched but one or more Pleos services are not ready. Inspect native-sdk-status.json; runtime integration is partial.');
           JS
+      - name: Confirm captures separately from SDK readiness
+        if: always() && steps.capture.outcome == 'success'
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          data = json.loads(pathlib.Path(os.environ['EVIDENCE'], 'capture-status.json').read_text())
+          if data['captureFailed']:
+              raise SystemExit('Capture incomplete. SDK readiness results are preserved separately; no complete demo video is claimed.')
+          print('Capture files exist. Manual visual review is still required; audio and full conversation are unverified.')
+          PY
       - name: Collect diagnostics and stop emulator
         if: always() && inputs.acknowledge_pleos_license && steps.prepare.outcome == 'success'
         run: |

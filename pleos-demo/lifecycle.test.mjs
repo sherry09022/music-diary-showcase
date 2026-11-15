@@ -7,7 +7,7 @@ import * as core from './core.mjs';
 // Execute the real application state machine with small DOM/audio test doubles.
 // This tests deferred speech/music cancellation without running a browser.
 function harness({native=false,storedMute=false}={}) {
- const calls={play:0,pause:0,nativePlay:0,spoken:[],audioContexts:[]};
+ const calls={play:0,pause:0,nativePlay:0,nativeListen:0,spoken:[],audioContexts:[]};
  const elements=new Map();
  function element(id='') {return {id,checked:true,value:'',textContent:'',hidden:false,muted:false,currentTime:0,duration:90,style:{},classList:{add(){}},
   getContext(){return {};},append(){},replaceChildren(){},setAttribute(){},addEventListener(){},
@@ -27,10 +27,10 @@ function harness({native=false,storedMute=false}={}) {
   sampleAt(kind){const walk=(node,level)=>{const output=level*(node.gain?.value??1);return node.kind===kind?output:node.connections.reduce((sum,next)=>sum+walk(next,output),0)};return this.nodes.filter(n=>n.kind==='source').reduce((sum,n)=>sum+walk(n,1),0);}
  }
  const window={AudioContext:FakeAudioContext,addEventListener(){},speechSynthesis:{cancel(){},speak(u){calls.spoken.push(u)}}};
- if(native)window.PleosNative={getStatus:()=>JSON.stringify({uxRestricted:false}),speak(){},stopSpeaking(){},stopListening(){},pauseAudio(){},playAudio(){calls.nativePlay++},listen(){}};
+ if(native)window.PleosNative={getStatus:()=>JSON.stringify({uxRestricted:false}),speak(){window.onPleosEvent?.({type:'music-pause'})},stopSpeaking(){},stopListening(){},pauseAudio(){window.onPleosEvent?.({type:'music-pause'})},playAudio(){calls.nativePlay++},listen(){calls.nativeListen++;window.onPleosEvent?.({type:'listening',active:true})}};
  const context=vm.createContext({...core,document,window,localStorage,console,setTimeout,clearTimeout,performance,Image:class{},SpeechSynthesisUtterance:class{constructor(text){this.text=text}},requestAnimationFrame(){}});
  const source=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8').replace(/^import .*\n/,'');
- vm.runInContext(source+`\nthis.api={beginListening,cancelDemo,playTrack,applyMute,setupAudio,startSession,submit,setSelected(){selected=TRACKS[0]},setMute(value){muted=value;applyMute()},state:()=>({auto,phase,muted,playing,talking,selected:selected?.id,previewIndex,tracks:tracks.map(t=>t.id)})};`,context);
+ vm.runInContext(source+`\nthis.api={beginListening,cancelDemo,playTrack,applyMute,setupAudio,startSession,submit,setSelected(){selected=TRACKS[0]},setMicWanted(value){micWanted=value},setMute(value){muted=value;applyMute()},state:()=>({auto,phase,muted,playing,talking,micWanted,listening,selected:selected?.id,previewIndex,tracks:tracks.map(t=>t.id)})};`,context);
  return {api:context.api,calls,elements,store,window};
 }
 for(const native of [false,true]) {
@@ -75,4 +75,18 @@ test('recording audio graph mutes both speakers and saved audio without pausing 
 test('recording created with saved mute starts with zero output on both sinks',async()=>{
  const h=harness({storedMute:true});await h.api.setupAudio();const graph=h.calls.audioContexts[0];
  assert.equal(graph.sampleAt('speaker'),0);assert.equal(graph.sampleAt('recording'),0);assert.equal(h.calls.play,0);
+});
+
+test('normal native music-pause during first question preserves automatic listening',async()=>{
+ const h=harness({native:true});h.api.setMicWanted(true);h.api.startSession();
+ // The native double emits music-pause from both pauseAudio() and speak(),
+ // even when no song is playing, matching the actual native event contract.
+ assert.equal(h.api.state().micWanted,true);h.window.onPleosEvent({type:'speech-start'});
+ h.window.onPleosEvent({type:'speech-end',stopped:false});await new Promise(resolve=>setTimeout(resolve,400));
+ assert.equal(h.calls.nativeListen,1);assert.equal(h.api.state().listening,true);assert.equal(h.api.state().micWanted,true);
+ h.api.setMicWanted(false);h.api.cancelDemo();
+});
+for(const type of ['audio-focus-lost','suspended'])test(`native ${type} still stops the conversation`,()=>{
+ const h=harness({native:true});h.api.setMicWanted(true);h.window.onPleosEvent({type});
+ assert.equal(h.api.state().micWanted,false);assert.equal(h.api.state().listening,false);
 });
