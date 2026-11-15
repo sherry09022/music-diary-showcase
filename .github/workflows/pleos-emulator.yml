@@ -149,7 +149,9 @@ jobs:
         timeout-minutes: 11
         run: |
           emulator_cores=$(nproc)
-          if [ "$emulator_cores" -gt 4 ]; then emulator_cores=4; fi
+          # The real SDK-ready run used 2 guest cores. Leave host CPU capacity
+          # for SwiftShader and first-boot speech-model extraction.
+          if [ "$emulator_cores" -gt 2 ]; then emulator_cores=2; fi
           printf '%s\n' "$emulator_cores" > "$EVIDENCE/emulator-cores.txt"
           nohup emulator -avd pleos_ci -no-window -no-audio -no-snapshot \
             -gpu swiftshader -memory 4096 -cores "$emulator_cores" -no-boot-anim -verbose \
@@ -180,7 +182,7 @@ jobs:
           nohup adb logcat -b main -b system -b crash -v threadtime > "$EVIDENCE/logcat-continuous.txt" 2>&1 < /dev/null &
           echo "$!" > "$EVIDENCE/logcat.pid"
           settle_started=$SECONDS
-          settle_deadline=$((SECONDS + 150))
+          settle_deadline=$((SECONDS + 210))
           stable_since=$SECONDS
           previous_user=''
           printf 'elapsedSeconds\tcurrentUser\tuserState\tbootAnimation\n' > "$EVIDENCE/user-readiness.tsv"
@@ -216,9 +218,11 @@ jobs:
             fi
             previous_user="$active_user"
             # The recorded first cold boot launched default home apps well after
-            # sys.boot_completed. Allow 60 seconds for that real OS initialization,
-            # then require 15 seconds of stable, observed unlocked-user state.
-            if [[ "$active_user" =~ ^[0-9]+$ ]] && [ "$user_state" = RUNNING_UNLOCKED ] && { [ -z "$boot_animation" ] || [ "$boot_animation" = stopped ]; } && [ "$((SECONDS-settle_started))" -ge 60 ] && [ "$((SECONDS-stable_since))" -ge 15 ]; then
+            # sys.boot_completed. The next run also overlapped initial speech-model
+            # extraction (49 seconds) with app startup and hit an OS ANR.
+            # Allow 120 seconds for real cold-boot work, then require the same
+            # 15 seconds of stable, observed unlocked-user state.
+            if [[ "$active_user" =~ ^[0-9]+$ ]] && [ "$user_state" = RUNNING_UNLOCKED ] && { [ -z "$boot_animation" ] || [ "$boot_animation" = stopped ]; } && [ "$((SECONDS-settle_started))" -ge 120 ] && [ "$((SECONDS-stable_since))" -ge 15 ]; then
               printf 'PLEOS_ACTIVE_USER=%s\n' "$active_user" >> "$GITHUB_ENV"
               printf '%s\n' "$active_user" > "$EVIDENCE/active-user.txt"
               timeout 10 adb shell dumpsys activity activities > "$EVIDENCE/home-after-settle.txt" 2>&1 || true
@@ -236,6 +240,10 @@ jobs:
           # Grant declared runtime permissions on this disposable emulator only.
           # This does not bypass signature permissions or access the local Mac mic.
           adb install --user "$PLEOS_ACTIVE_USER" -r -g pleos-demo/android/app/build/outputs/apk/debug/app-debug.apk > "$EVIDENCE/apk-install.log" 2>&1
+          # Keep package indexing separate from the first WebView launch on the
+          # shared CPU/software-GPU runner. This does not change any SDK state.
+          printf 'Waiting 30 seconds after install before first app launch.\n' > "$EVIDENCE/post-install-settle.txt"
+          sleep 30
           app_resumed=false
           for attempt in 1 2 3; do
             current_user=$(adb shell am get-current-user | tr -d '\r')
