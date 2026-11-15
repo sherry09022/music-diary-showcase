@@ -148,8 +148,11 @@ jobs:
       - name: Attempt silent cold boot with software graphics
         timeout-minutes: 11
         run: |
+          emulator_cores=$(nproc)
+          if [ "$emulator_cores" -gt 4 ]; then emulator_cores=4; fi
+          printf '%s\n' "$emulator_cores" > "$EVIDENCE/emulator-cores.txt"
           nohup emulator -avd pleos_ci -no-window -no-audio -no-snapshot \
-            -gpu swiftshader -memory 4096 -cores 2 -no-boot-anim -verbose \
+            -gpu swiftshader -memory 4096 -cores "$emulator_cores" -no-boot-anim -verbose \
             > "$EVIDENCE/emulator.log" 2>&1 < /dev/null &
           echo "$!" > "$EVIDENCE/emulator.pid"
           deadline=$((SECONDS + 600))
@@ -363,40 +366,112 @@ jobs:
           JS
       - name: Record real UI journey with example answers (silent)
         if: success() && steps.sdk_readiness.outcome == 'success'
-        timeout-minutes: 5
+        timeout-minutes: 9
         run: |
           # Native instrumentation also requires actual SDK readiness and unrestricted
           # AAOS UX before every action. No JS, SDK, or VHAL values are substituted.
           test "$(adb shell am get-current-user | tr -d '\r')" = "$PLEOS_ACTIVE_USER"
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          ffmpeg -version > "$EVIDENCE/ffmpeg-version.txt"
           adb install --user "$PLEOS_ACTIVE_USER" -r pleos-demo/android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk > "$EVIDENCE/test-apk-install.log"
-          adb shell screenrecord --size 1280x720 --bit-rate 4000000 --time-limit 180 /sdcard/pleos-journey.mp4 > "$EVIDENCE/journey-screenrecord.log" 2>&1 &
+          # Android screenrecord limits a file to 180 seconds. Keep the actual
+          # recordings as two sequential segments; concatenate their frames only.
+          (
+            for segment in 1 2; do
+              if [ -e "$EVIDENCE/journey-recording-stop" ]; then break; fi
+              printf '%s segment=%s start\n' "$(date -u +%FT%TZ)" "$segment" >> "$EVIDENCE/journey-recording-timeline.txt"
+              adb shell screenrecord --size 1280x720 --bit-rate 4000000 --time-limit 180 \
+                "/sdcard/pleos-journey-$segment.mp4" > "$EVIDENCE/journey-screenrecord-$segment.log" 2>&1 || true
+              printf '%s segment=%s end\n' "$(date -u +%FT%TZ)" "$segment" >> "$EVIDENCE/journey-recording-timeline.txt"
+            done
+          ) &
           recorder=$!
           instrument_result=0
-          timeout 165 adb shell am instrument --user "$PLEOS_ACTIVE_USER" -w -r \
+          instrument_started=$(date +%s)
+          timeout 300 adb shell am instrument --user "$PLEOS_ACTIVE_USER" -w -r \
             -e allowPleosJourney true \
             -e class ai.projectshu.musicdiary.pleosdemo.PleosJourneyTest \
             ai.projectshu.musicdiary.pleosdemo.test/androidx.test.runner.AndroidJUnitRunner \
             > "$EVIDENCE/journey-instrumentation.log" 2>&1 || instrument_result=$?
-          adb shell pkill -2 screenrecord || true
+          instrument_elapsed=$(($(date +%s)-instrument_started))
+          touch "$EVIDENCE/journey-recording-stop"
+          # Repeated SIGINT also covers a segment boundary while the recorder
+          # moves to its next real file. No synthetic frames fill that boundary.
+          for stop_attempt in 1 2 3; do
+            adb shell pkill -2 screenrecord || true
+            sleep 1
+          done
           wait "$recorder" || true
-          timeout 30 adb pull /sdcard/pleos-journey.mp4 "$EVIDENCE/pleos-native-journey-silent.mp4" > "$EVIDENCE/journey-video-pull.log" 2>&1 || true
-          timeout 30 adb pull \
-            "/storage/emulated/$PLEOS_ACTIVE_USER/Android/data/$APP_ID/files/journey-evidence/" \
-            "$EVIDENCE/journey-evidence" > "$EVIDENCE/journey-evidence-pull.log" 2>&1 || true
+          : > "$EVIDENCE/journey-segments.txt"
+          for segment in 1 2; do
+            clip="$EVIDENCE/pleos-native-journey-segment-$segment.mp4"
+            if timeout 30 adb pull "/sdcard/pleos-journey-$segment.mp4" "$clip" > "$EVIDENCE/journey-video-pull-$segment.log" 2>&1 && [ -s "$clip" ]; then
+              printf "file '%s'\n" "$clip" >> "$EVIDENCE/journey-segments.txt"
+            fi
+          done
+          if [ -s "$EVIDENCE/journey-segments.txt" ]; then
+            ffmpeg -nostdin -y -f concat -safe 0 -i "$EVIDENCE/journey-segments.txt" \
+              -c copy -an -movflags +faststart "$EVIDENCE/pleos-native-journey-silent.mp4" > "$EVIDENCE/journey-concat.log" 2>&1 || true
+            ffprobe -v error -show_format -show_streams -of json "$EVIDENCE/pleos-native-journey-silent.mp4" > "$EVIDENCE/journey-video-metadata.json" 2>&1 || true
+          fi
           if [ "$instrument_result" -ne 0 ]; then
             adb shell am force-stop --user "$PLEOS_ACTIVE_USER" "$APP_ID" || true
           fi
-          INSTRUMENT_RESULT="$instrument_result" python3 - <<'PY'
+          # Android 14 run-as syntax is PACKAGE --user ID COMMAND. Access only
+          # this debuggable app's own files; do not read another user's storage.
+          timeout 30 adb exec-out run-as "$APP_ID" --user "$PLEOS_ACTIVE_USER" \
+            tar -C files/journey-evidence -cf - . > "$EVIDENCE/journey-evidence.tar" 2> "$EVIDENCE/journey-evidence-pull.log" || true
+          python3 - <<'PY' > "$EVIDENCE/journey-extract.log" 2>&1 || true
+          import json, os, pathlib, tarfile
+          evidence = pathlib.Path(os.environ['EVIDENCE'])
+          target = evidence / 'journey-evidence'
+          target.mkdir(exist_ok=True)
+          try:
+              with tarfile.open(evidence / 'journey-evidence.tar', 'r:*') as archive:
+                  for member in archive.getmembers():
+                      path = pathlib.PurePosixPath(member.name)
+                      if path.is_absolute() or '..' in path.parts:
+                          raise ValueError('Unsafe archive path: ' + member.name)
+                      if member.isdir():
+                          continue
+                      if not member.isfile() or path.suffix not in {'.json', '.png', '.xml'}:
+                          raise ValueError('Unexpected archive member: ' + member.name)
+                      destination = target.joinpath(*path.parts)
+                      if not destination.resolve().is_relative_to(target.resolve()):
+                          raise ValueError('Archive member escaped evidence directory')
+                      destination.parent.mkdir(parents=True, exist_ok=True)
+                      with archive.extractfile(member) as source, destination.open('wb') as output:
+                          import shutil
+                          shutil.copyfileobj(source, output)
+              print('Extracted only regular JSON, PNG and XML files from this debug app.')
+          except Exception as error:
+              (evidence / 'journey-extraction-error.json').write_text(json.dumps({'error': str(error)}))
+              raise
+          PY
+          INSTRUMENT_RESULT="$instrument_result" INSTRUMENT_ELAPSED="$instrument_elapsed" python3 - <<'PY'
           import json, os, pathlib
           evidence = pathlib.Path(os.environ['EVIDENCE'])
           result_path = evidence / 'journey-evidence' / 'result.json'
-          result = json.loads(result_path.read_text()) if result_path.exists() else {}
+          try:
+              result = json.loads(result_path.read_text()) if result_path.exists() else {}
+          except (ValueError, OSError) as error:
+              result = {'passed': False, 'error': 'Could not read test result: ' + str(error)}
           video = evidence / 'pleos-native-journey-silent.mp4'
           log = (evidence / 'journey-instrumentation.log').read_text(errors='replace')
           process_ok = os.environ['INSTRUMENT_RESULT'] == '0'
           test_ok = result.get('passed') is True and 'FAILURES!!!' not in log and 'INSTRUMENTATION_FAILED' not in log
-          video_exists = video.is_file() and video.stat().st_size > 0
+          try:
+              metadata = json.loads((evidence / 'journey-video-metadata.json').read_text())
+          except (ValueError, OSError):
+              metadata = {}
+          video_exists = video.is_file() and video.stat().st_size > 0 and any(stream.get('codec_type') == 'video' for stream in metadata.get('streams', []))
           summary = {'instrumentationExit': int(os.environ['INSTRUMENT_RESULT']), 'testPassed': test_ok,
+                     'instrumentationElapsedSeconds': int(os.environ['INSTRUMENT_ELAPSED']),
+                     'recordedDurationSeconds': metadata.get('format', {}).get('duration'),
+                     'testError': result.get('error', None if result_path.exists() else 'No result.json collected; inspect instrumentation and extraction logs.'),
                      'videoCaptured': video_exists, 'passed': process_ok and test_ok and video_exists,
                      'interaction': 'real accessibility button taps with example answers',
                      'visualReviewRequired': True, 'acousticOutputVerified': False, 'microphoneRecognitionVerified': False}

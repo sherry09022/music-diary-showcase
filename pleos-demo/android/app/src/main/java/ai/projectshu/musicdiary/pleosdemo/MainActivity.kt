@@ -184,7 +184,7 @@ class MainActivity : Activity() {
                     if (!alive) return
                     runCatching {
                         tts.addEventListener(ttsEvents)
-                        tts.setLocale(Locale.KOREAN)
+                        tts.setLocale(Locale.KOREA)
                         tts.setAudioAttributes(speechAttributes)
                     }.onSuccess { ttsReady = true }
                         .onFailure { error("tts-init", it.javaClass.simpleName) }
@@ -200,7 +200,7 @@ class MainActivity : Activity() {
                     if (!alive) return
                     runCatching {
                         stt.addListener(sttEvents)
-                        stt.setLocale(Locale.KOREAN)
+                        stt.setLocale(Locale.KOREA)
                     }.onSuccess { sttReady = true }
                         .onFailure { error("stt-init", it.javaClass.simpleName) }
                     publishStatus()
