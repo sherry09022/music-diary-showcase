@@ -374,7 +374,7 @@ jobs:
           JS
       - name: Record real UI journey with example answers (silent)
         if: success() && steps.sdk_readiness.outcome == 'success'
-        timeout-minutes: 9
+        timeout-minutes: 14
         run: |
           # Native instrumentation also requires actual SDK readiness and unrestricted
           # AAOS UX before every action. No JS, SDK, or VHAL values are substituted.
@@ -386,9 +386,9 @@ jobs:
           ffmpeg -version > "$EVIDENCE/ffmpeg-version.txt"
           adb install --user "$PLEOS_ACTIVE_USER" -r pleos-demo/android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk > "$EVIDENCE/test-apk-install.log"
           # Android screenrecord limits a file to 180 seconds. Keep the actual
-          # recordings as two sequential segments; concatenate their frames only.
+          # recordings as up to four sequential segments; concatenate their frames only.
           (
-            for segment in 1 2; do
+            for segment in 1 2 3 4; do
               if [ -e "$EVIDENCE/journey-recording-stop" ]; then break; fi
               printf '%s segment=%s start\n' "$(date -u +%FT%TZ)" "$segment" >> "$EVIDENCE/journey-recording-timeline.txt"
               adb shell screenrecord --size 1280x720 --bit-rate 4000000 --time-limit 180 \
@@ -399,7 +399,7 @@ jobs:
           recorder=$!
           instrument_result=0
           instrument_started=$(date +%s)
-          timeout 300 adb shell am instrument --user "$PLEOS_ACTIVE_USER" -w -r \
+          timeout 600 adb shell am instrument --user "$PLEOS_ACTIVE_USER" -w -r \
             -e allowPleosJourney true \
             -e class ai.projectshu.musicdiary.pleosdemo.PleosJourneyTest \
             ai.projectshu.musicdiary.pleosdemo.test/androidx.test.runner.AndroidJUnitRunner \
@@ -414,7 +414,7 @@ jobs:
           done
           wait "$recorder" || true
           : > "$EVIDENCE/journey-segments.txt"
-          for segment in 1 2; do
+          for segment in 1 2 3 4; do
             clip="$EVIDENCE/pleos-native-journey-segment-$segment.mp4"
             if timeout 30 adb pull "/sdcard/pleos-journey-$segment.mp4" "$clip" > "$EVIDENCE/journey-video-pull-$segment.log" 2>&1 && [ -s "$clip" ]; then
               printf "file '%s'\n" "$clip" >> "$EVIDENCE/journey-segments.txt"

@@ -45,7 +45,7 @@ Actions → **Pleos emulator experiment (silent)** → Run workflow에서 `ackno
 
 ### 녹화와 증거 수집
 
-UI 계측 명령은 최대 **300초** 동안 실행합니다. Android `screenrecord`의 파일별 180초 제한에 맞춰 실제 화면을 **최대 두 개의 연속 세그먼트**로 녹화하고, 계측이 끝나면 녹화를 중단합니다. 확보된 원본 MP4를 `ffmpeg -f concat -c copy -an`으로 연결해 `pleos-native-journey-silent.mp4`를 만듭니다. 정지 이미지·합성 프레임·만들어낸 전환 장면을 넣지 않습니다. 분할 원본과 녹화 시각 로그도 함께 남깁니다.
+UI 계측 명령은 최대 **600초** 동안 실행합니다. Android `screenrecord`의 파일별 180초 제한에 맞춰 실제 화면을 **최대 네 개의 연속 세그먼트**로 녹화하고, 계측이 끝나면 녹화를 중단합니다. 영상과 결과 수집을 포함한 이 단계는 최대 14분입니다. 확보된 원본 MP4를 `ffmpeg -f concat -c copy -an`으로 연결해 `pleos-native-journey-silent.mp4`를 만듭니다. 정지 이미지·합성 프레임·만들어낸 전환 장면을 넣지 않습니다. 분할 원본과 녹화 시각 로그도 함께 남깁니다.
 
 계측테스트의 체크포인트 PNG·XML·JSON은 앱 내부 `filesDir/journey-evidence`에 저장합니다. 확인된 Android 사용자의 해당 debug 앱에 대해서만 다음 방식으로 수집합니다.
 
@@ -72,7 +72,7 @@ adb exec-out run-as "$APP_ID" --user "$PLEOS_ACTIVE_USER" \
 | `journey-evidence.tar`, `journey-evidence-pull.log` | 해당 사용자의 앱 내부 증거 수집 원본·수집 오류 |
 | `journey-evidence/steps.json`, `journey-evidence/result.json` | 실제 버튼 조작·체크포인트·SDK 상태, 앱 자체 재생 위치 증가 검사, 저장·재열기 결과 |
 | `journey-evidence/00-native-ready.png`부터 `08-diary-reopened.png` 및 같은 이름의 `.xml` | 각 체크포인트의 실제 화면과 접근성 구조. 실패하면 `failure.png`·`.xml`도 확인 |
-| `pleos-native-journey-segment-1.mp4`, `pleos-native-journey-segment-2.mp4` | 각각 최대 180초의 실제 화면 녹화 원본. 두 번째 파일은 필요할 때만 생성 |
+| `pleos-native-journey-segment-1.mp4` ~ `pleos-native-journey-segment-4.mp4` | 각각 최대 180초의 실제 화면 녹화 원본. 두 번째 이후 파일은 필요할 때만 생성 |
 | `journey-recording-timeline.txt`, `journey-segments.txt`, `journey-concat.log` | 원본별 녹화 시각·연결 순서·연결 처리 결과 |
 | `pleos-native-journey-silent.mp4` | 확보한 실제 녹화 세그먼트를 연결한 무음 영상. 영상 길이만으로 전체 여정 성공을 판단하지 않음 |
 
@@ -80,7 +80,7 @@ adb exec-out run-as "$APP_ID" --user "$PLEOS_ACTIVE_USER" \
 
 준비 단계가 실패하면 UI 여정은 실행하지 않습니다. 계측 단계가 실패하거나 제한 시간에 도달하면 성공으로 바꾸지 않고, 확보된 부분 캡처·로그·결과를 남깁니다. 실패 시 `image-install.log`, `emulator.log`, `logcat.txt`, 서비스 상태 및 계측 로그를 살펴보세요.
 
-10분 안에 부팅되지 않으면 중단합니다. UI 계측 명령은 300초, 여정 녹화는 파일당 최대 180초씩 두 세그먼트 이내, 전체 작업은 최대 35분으로 제한합니다. 공개 저장소의 표준 Linux runner를 사용하며 유료 GPU나 AI API로 자동 전환하지 않습니다. 로그·JSON·화면 캡처·무음 영상은 7일간 artifact로 보관합니다. **시스템 이미지, SDK AAR 원본, 앱·계측 APK는 이 workflow의 공개 artifact에 포함하지 않습니다.** 자동 출시나 App Market 제출도 하지 않습니다.
+10분 안에 부팅되지 않으면 중단합니다. UI 계측 명령은 600초, 여정 녹화는 파일당 최대 180초씩 네 세그먼트 이내, 전체 작업은 최대 35분으로 제한합니다. 공개 저장소의 표준 Linux runner를 사용하며 유료 GPU나 AI API로 자동 전환하지 않습니다. 로그·JSON·화면 캡처·무음 영상은 7일간 artifact로 보관합니다. **시스템 이미지, SDK AAR 원본, 앱·계측 APK는 이 workflow의 공개 artifact에 포함하지 않습니다.** 자동 출시나 App Market 제출도 하지 않습니다.
 
 ## 공식 근거
 

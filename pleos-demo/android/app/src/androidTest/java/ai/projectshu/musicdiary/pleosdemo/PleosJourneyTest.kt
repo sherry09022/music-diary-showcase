@@ -1,8 +1,11 @@
 package ai.projectshu.musicdiary.pleosdemo
 
 import android.media.AudioManager
+import android.graphics.Rect
 import android.os.SystemClock
 import android.util.Log
+import android.view.accessibility.AccessibilityNodeInfo
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -19,12 +22,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 
-/** Real accessibility clicks only. No DOM evaluation, JS state writes, SDK mocks, or VHAL writes. */
+/** Real Android accessibility actions only. No DOM evaluation, JS state writes, SDK mocks, or VHAL writes. */
 @RunWith(AndroidJUnit4::class)
 class PleosJourneyTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val device = UiDevice.getInstance(instrumentation)
     private lateinit var scenario: ActivityScenario<MainActivity>
+    private lateinit var bridge: MainActivity.NativeBridge
     private val events = JSONArray()
     private lateinit var evidence: File
 
@@ -41,6 +45,9 @@ class PleosJourneyTest {
         configuration.setWaitForIdleTimeout(1000).setWaitForSelectorTimeout(0)
         scenario = ActivityScenario.launch(MainActivity::class.java)
         try {
+            // Capture the real bridge once. Its status reads only volatile cached values;
+            // onActivity on every poll needlessly waits for the animated WebView to idle.
+            scenario.onActivity { bridge = it.NativeBridge() }
             // Read the actual native bridge state; never replace services or vehicle restrictions.
             waitFor("real Pleos SDK and unrestricted AAOS UX", 45000) { ready(sdkStatus()) }
             record("00-native-ready")
@@ -83,7 +90,7 @@ class PleosJourneyTest {
             record("08-diary-reopened")
             hold(3000)
             File(evidence, "result.json").writeText(JSONObject()
-                .put("passed", true).put("interaction", "real accessibility button taps")
+                .put("passed", true).put("interaction", "real Android accessibility button actions")
                 .put("sdkState", sdkStatus()).put("steps", events)
                 .put("audioStreamActiveObserved", true)
                 .put("ownMediaPlayerPositionAdvanced", true)
@@ -103,9 +110,9 @@ class PleosJourneyTest {
     }
 
     private fun sdkStatus(): JSONObject {
-        var result = JSONObject()
-        scenario.onActivity { result = JSONObject(it.NativeBridge().getStatus()) }
-        return result
+        assertEquals("Read status only while this actual Activity is resumed",
+            Lifecycle.State.RESUMED, scenario.state)
+        return JSONObject(bridge.getStatus())
     }
 
     private fun ready(state: JSONObject): Boolean = state.optString("transport") == "pleos-native" &&
@@ -157,21 +164,54 @@ class PleosJourneyTest {
         SystemClock.sleep(500)
     }
 
+    @Suppress("DEPRECATION")
     private fun clickObservedButton(target: UiObject, label: String) {
         waitFor("actual enabled button: $label", 25000) {
             assertSafe()
             target.exists() && target.isEnabled && !target.visibleBounds.isEmpty
         }
-        // Re-read after speech/UI transitions; never reuse the earlier position.
-        val bounds = target.visibleBounds
-        assertTrue("Accessible button has no visible bounds: $label", !bounds.isEmpty)
-        // Actual input coordinates come exclusively from the current accessibility node.
-        // The following question/player checks, not an event-ack boolean, prove the action worked.
-        val injected = device.click(bounds.centerX(), bounds.centerY())
-        events.put(JSONObject().put("action", "input-at-observed-button").put("label", label)
-            .put("injectionReported", injected).put("bounds", bounds.toShortString())
-            .put("elapsedMs", SystemClock.elapsedRealtime()))
-        saveSteps()
+        val actualLabel = target.text?.takeIf { it.isNotBlank() }
+            ?: target.contentDescription?.takeIf { it.isNotBlank() }
+            ?: throw AssertionError("Observed button has no accessible label: $label")
+        val node = findActualButton(actualLabel)
+            ?: throw AssertionError("Actual accessibility button unavailable: $label")
+        try {
+            val bounds = Rect()
+            node.getBoundsInScreen(bounds)
+            assertTrue("Accessible button has no visible bounds: $label", !bounds.isEmpty)
+            // This is Android's actual accessibility action on the observed HTML button.
+            // It neither evaluates JS nor invokes the app's state-changing bridge methods.
+            val accepted = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            events.put(JSONObject().put("action", "accessibility-click").put("label", label)
+                .put("actualLabel", actualLabel).put("actionAccepted", accepted)
+                .put("bounds", bounds.toShortString()).put("elapsedMs", SystemClock.elapsedRealtime()))
+            saveSteps()
+            // The caller must still observe the next real UI/player state before passing.
+        } finally {
+            node.recycle()
+        }
+    }
+
+    @Suppress("DEPRECATION") // Recycle nodes on API 28–32; harmless on newer emulators.
+    private fun findActualButton(label: String): AccessibilityNodeInfo? {
+        val automation = instrumentation.uiAutomation
+        val roots = automation.windows.mapNotNull { it.root }
+            .ifEmpty { listOfNotNull(automation.rootInActiveWindow) }
+        var selected: AccessibilityNodeInfo? = null
+        for (root in roots) {
+            if (selected == null) {
+                val matches = root.findAccessibilityNodeInfosByText(label)
+                selected = matches.firstOrNull {
+                    it.packageName?.toString() == instrumentation.targetContext.packageName &&
+                        (it.text?.toString() == label || it.contentDescription?.toString() == label) &&
+                        it.isVisibleToUser && it.isEnabled && it.isClickable &&
+                        it.actionList.any { action -> action.id == AccessibilityNodeInfo.ACTION_CLICK }
+                }
+                matches.filter { it !== selected }.forEach { it.recycle() }
+            }
+            root.recycle()
+        }
+        return selected
     }
 
     private fun findVisible(label: String, timeout: Long): UiObject? =
