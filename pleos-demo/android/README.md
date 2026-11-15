@@ -6,12 +6,14 @@
 
 | 기능 | 네이티브 구현 | 검증 상태 |
 | --- | --- | --- |
-| 음성 합성 | TextToSpeech 3.3.1, `Mode.ON_DEVICE` | 공식 AAR의 메서드 서명 확인. 실제 음성 서비스 실행은 미검증 |
-| 음성 인식 | SpeechToText 3.3.1, `Mode.ON_DEVICE`, 중간·최종 텍스트 전달 | 공식 AAR의 메서드 서명 확인. 실제 마이크 인식은 미검증 |
-| 차량 정보 | Vehicle 2.3.2, capability 확인 후 브레이크 페달 조회 | 실제 Pleos 차량 서비스 실행은 미검증 |
-| 화면 제한 | 표준 AAOS `CarUxRestrictionsManager` 조회·변경 구독 | 실제 Car 서비스 실행은 미검증 |
+| 음성 합성 | TextToSpeech 3.3.1, `Mode.ON_DEVICE` | CI 컴파일 통과. 실제 음성 서비스 실행은 미검증 |
+| 음성 인식 | SpeechToText 3.3.1, `Mode.ON_DEVICE`, 중간·최종 텍스트 전달 | CI 컴파일 통과. 실제 마이크 인식은 미검증 |
+| 차량 정보 | Vehicle 2.3.2, capability 확인 후 브레이크 페달 조회 | CI 컴파일 통과. 실제 Pleos 차량 서비스 실행은 미검증 |
+| 화면 제한 | 표준 AAOS `CarUxRestrictionsManager` 조회·변경 구독 | CI 컴파일 통과. 실제 Car 서비스 실행은 미검증 |
 | 음악 | 앱에 포함된 공개 라이선스 음원, Android MediaPlayer 브리지 | Pleos 장치 출력은 미검증 |
-| 빌드 | GitHub Actions에서 `assembleDebug` + `lintDebug` | [실제 워크플로 결과 확인](https://github.com/sherry09022/music-diary-showcase/actions/workflows/pleos-demo.yml) |
+| 빌드 | GitHub Actions에서 `assembleDebug` + `lintDebug` | 2026-11-15, 커밋 `72ab9fd` [실행 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43709787102). 이후 수정본은 [최신 실행](https://github.com/sherry09022/music-diary-showcase/actions/workflows/pleos-demo.yml)에서 확인 |
+
+검증한 `72ab9fd`의 debug APK는 33,992,481바이트이고 SHA-256은 `bc9923e7d8bcaea1c38a1350dd53e1204f543938e2749186c082ec24692c0668`입니다. Lint는 오류 없이 경고 4개로 통과했습니다(최신 API 대상 여부, 더 새 WebKit 라이브러리, 권장되지 않는 API, 데이터 추출 규칙). 이 기록은 해당 커밋의 결과이며 이후 APK에 같은 해시를 적용하지 않습니다.
 
 **브레이크 페달을 밟았다는 값으로 주차 상태를 추측하지 않습니다.** 이 SDK 버전의 공개 Brake 인터페이스에는 주차 브레이크 조회가 없습니다. `parked`는 항상 `null`로 전달합니다. 폼·일기 화면 허용 여부는 별도로 연결한 표준 AAOS `CarUxRestrictionsManager`의 `isRequiresDistractionOptimization()` 결과를 따릅니다. `uxRestricted === false`일 때만 전체 화면을 허용하고, 연결 전·오류·연결 해제 상태는 `null`로 보내 제한을 유지합니다. 제한이 켜지면 `activeRestrictions`의 NO_KEYBOARD / NO_SETUP / NO_TEXT_MESSAGE / NO_VOICE_TRANSCRIPTION 등 비트도 준수해야 합니다. 이 앱은 실제 차량에서 운전자 주의 분산 검증을 마치지 않았으며 manifest에 distractionOptimized로 승인된 것처럼 선언하지 않았습니다. 이동 중 OS가 앱 화면을 차단할 수 있습니다.
 

@@ -10,6 +10,7 @@
 
 ## Pleos Connect 별도 개발 데모
 
+- [녹화한 웹 시연 영상](https://sherry09022.github.io/music-diary-showcase/pleos-demo/watch.html)
 - [차량용 웹 데모 체험](https://sherry09022.github.io/music-diary-showcase/pleos-demo/)
 - [별도 소스·SDK 구성](pleos-demo/) · [Android 빌드 검증](https://github.com/sherry09022/music-diary-showcase/actions/workflows/pleos-demo.yml)
 

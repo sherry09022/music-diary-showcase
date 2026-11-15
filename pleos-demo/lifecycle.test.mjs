@@ -19,7 +19,7 @@ function harness({native=false,storedMute=false}={}) {
  if(native)window.PleosNative={getStatus:()=>JSON.stringify({uxRestricted:false}),speak(){},stopSpeaking(){},stopListening(){},pauseAudio(){},playAudio(){calls.nativePlay++},listen(){}};
  const context=vm.createContext({...core,document,window,localStorage,console,setTimeout,clearTimeout,performance,Image:class{},SpeechSynthesisUtterance:class{constructor(text){this.text=text}},requestAnimationFrame(){}});
  const source=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8').replace(/^import .*\n/,'');
- vm.runInContext(source+`\nthis.api={beginListening,cancelDemo,playTrack,applyMute,startSession,submit,setSelected(){selected=TRACKS[0]},setMute(value){muted=value;applyMute()},state:()=>({auto,phase,muted,playing,selected:selected?.id,previewIndex,tracks:tracks.map(t=>t.id)})};`,context);
+ vm.runInContext(source+`\nthis.api={beginListening,cancelDemo,playTrack,applyMute,startSession,submit,setSelected(){selected=TRACKS[0]},setMute(value){muted=value;applyMute()},state:()=>({auto,phase,muted,playing,talking,selected:selected?.id,previewIndex,tracks:tracks.map(t=>t.id)})};`,context);
  return {api:context.api,calls,elements,store,window};
 }
 for(const native of [false,true]) {
@@ -45,4 +45,10 @@ test('onboarding preference is never carried into the reordered session recommen
  h.api.submit('불안해요');h.api.submit('편안해지고 싶어요');h.api.submit('넓게 퍼지는 묵직한 느낌이에요');
  assert.equal(h.api.state().phase,'recommend');assert.equal(h.api.state().tracks[0],'hiraeth');assert.equal(h.api.state().previewIndex,null);assert.equal(h.api.state().selected,undefined);
  h.api.submit('이 곡이 좋겠어요');assert.equal(h.api.state().phase,'recommend');
+});
+
+test('a vehicle telemetry error does not terminate an independent voice turn',async()=>{
+ const h=harness({native:true});h.api.setSelected();const pending=h.api.beginListening('이 곡이 좋겠어요');
+ assert.equal(h.api.state().talking,true);h.window.onPleosEvent({type:'error',component:'vehicle-capability',code:'UNAVAILABLE'});
+ assert.equal(h.api.state().talking,true);assert.equal(h.calls.nativePlay,0);h.api.cancelDemo();await pending;
 });

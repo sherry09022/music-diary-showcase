@@ -5,10 +5,18 @@ on:
   push:
     paths:
       - 'pleos-demo/**'
+      - '!pleos-demo/video/**'
+      - '!pleos-demo/downloads/**'
+      - '!pleos-demo/**/*.md'
+      - '!pleos-demo/watch.html'
       - '.github/workflows/pleos-demo.yml'
   pull_request:
     paths:
       - 'pleos-demo/**'
+      - '!pleos-demo/video/**'
+      - '!pleos-demo/downloads/**'
+      - '!pleos-demo/**/*.md'
+      - '!pleos-demo/watch.html'
       - '.github/workflows/pleos-demo.yml'
 
 permissions:

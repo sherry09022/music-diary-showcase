@@ -1,0 +1,209 @@
+name: Pleos emulator experiment (silent)
+
+on:
+  workflow_dispatch:
+    inputs:
+      acknowledge_pleos_license:
+        description: 'I reviewed/accept Pleos SDK license 2.1/2.2 linked in android/EMULATOR.md; installation/use accepts it.'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pleos-emulator-experiment
+  cancel-in-progress: false
+
+jobs:
+  emulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      EVIDENCE: ${{ github.workspace }}/pleos-evidence
+      APP_ID: ai.projectshu.musicdiary.pleosdemo
+      PLEOS_IMAGE: system-images;android-34;pleos_car_emulator;x86_64
+      PLEOS_REPOSITORY: https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-sys-img.xml
+    steps:
+      - name: Require explicit license acknowledgement before any installation
+        env:
+          ACKNOWLEDGED: ${{ inputs.acknowledge_pleos_license }}
+        run: |
+          if [ "$ACKNOWLEDGED" != true ]; then
+            echo '::error::Not started. Review Pleos SDK license clauses 2.1/2.2 in pleos-demo/android/EMULATOR.md and explicitly acknowledge before installation.'
+            echo 'No Pleos SDK or emulator installation was attempted.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo 'Experimental software-rendered Pleos boot. No guarantee of GPU compatibility; no release or vehicle certification.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+      - name: Prepare evidence and record revision
+        id: prepare
+        run: |
+          mkdir -p "$EVIDENCE"
+          printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE/commit.txt"
+          df -h > "$EVIDENCE/disk-before.txt"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+      - name: Compile this revision against the official SDK
+        working-directory: pleos-demo/android
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          ./gradlew --no-daemon :app:assembleDebug --stacktrace 2>&1 | tee "$EVIDENCE/build.log"
+      - name: Register official image repository and inspect metadata
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, urllib.request, xml.etree.ElementTree as ET
+          url = os.environ['PLEOS_REPOSITORY']
+          with urllib.request.urlopen(url, timeout=30) as response:
+              root = ET.fromstring(response.read(262144))
+          package = next(e for e in root.iter() if e.tag.split('}')[-1] == 'remotePackage' and e.get('path') == os.environ['PLEOS_IMAGE'])
+          def value(name):
+              return next((e.text or '').strip() for e in package.iter() if e.tag.split('}')[-1] == name)
+          result = {'repository': url, 'package': package.get('path'), 'api': value('api-level'), 'abi': value('abi'), 'archive': value('url'), 'archiveBytes': int(value('size')), 'checksum': value('checksum')}
+          assert result['api'] == '34' and result['abi'] == 'x86_64'
+          assert result['archive'].startswith('https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/')
+          pathlib.Path(os.environ['EVIDENCE'], 'official-image-metadata.json').write_text(json.dumps(result, indent=2))
+          directory = pathlib.Path.home() / '.android'
+          directory.mkdir(exist_ok=True)
+          (directory / 'repositories.cfg').write_text('count=1\nsrc00=' + url + '\ndisp00=Pleos Connect official image\nenabled00=true\n')
+          print('Official API 34 x86_64 metadata verified; archive bytes:', result['archiveBytes'])
+          PY
+          sdkmanager --list > "$EVIDENCE/sdk-packages.log" 2>&1
+          if ! grep -F "$PLEOS_IMAGE" "$EVIDENCE/sdk-packages.log"; then
+            echo '::error::Official Pleos image was not discovered by sdkmanager. No substitute image will be used.'
+            exit 1
+          fi
+      - name: Install licensed Pleos image and emulator
+        timeout-minutes: 12
+        run: |
+          # Acceptance is permitted only after the explicit workflow input gate above.
+          # sdkmanager performs official archive/checksum validation; no SDK is redistributed.
+          set +o pipefail
+          yes | sdkmanager "$PLEOS_IMAGE" emulator > "$EVIDENCE/image-install.log" 2>&1
+          result=${PIPESTATUS[1]}
+          set -o pipefail
+          if [ "$result" -ne 0 ]; then
+            tail -n 35 "$EVIDENCE/image-install.log"
+            echo '::error::Pleos image installation failed; inspect image-install.log (network, disk, license, or SDK compatibility).'
+            exit "$result"
+          fi
+          echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
+      - name: Create AVD from installed official image
+        run: |
+          emulator -version > "$EVIDENCE/emulator-version.txt" 2>&1
+          avdmanager list device > "$EVIDENCE/available-device-profiles.txt"
+          printf 'no\n' | avdmanager create avd --force --name pleos_ci --package "$PLEOS_IMAGE" > "$EVIDENCE/avd-create.log" 2>&1
+          cp "$HOME/.android/avd/pleos_ci.avd/config.ini" "$EVIDENCE/avd-config.ini"
+          if [ ! -e /dev/kvm ]; then
+            echo '::error::KVM unavailable on this runner; stopping instead of unbounded software CPU emulation.'
+            exit 1
+          fi
+          sudo chmod a+rw /dev/kvm
+          emulator -accel-check > "$EVIDENCE/acceleration.txt" 2>&1
+      - name: Attempt silent cold boot with software graphics
+        timeout-minutes: 11
+        run: |
+          nohup emulator -avd pleos_ci -no-window -no-audio -no-snapshot \
+            -gpu swiftshader -memory 4096 -cores 2 -no-boot-anim -verbose \
+            > "$EVIDENCE/emulator.log" 2>&1 < /dev/null &
+          echo "$!" > "$EVIDENCE/emulator.pid"
+          deadline=$((SECONDS + 600))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            if ! kill -0 "$(cat "$EVIDENCE/emulator.pid")" 2>/dev/null; then
+              echo '::error::Pleos emulator exited before boot. Software GPU support is unverified; see emulator.log.'
+              exit 1
+            fi
+            boot=$(timeout 10 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
+            if [ "$boot" = 1 ]; then
+              printf '1\n' > "$EVIDENCE/sys.boot_completed.txt"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo '::error::Pleos cold boot did not complete within 10 minutes. This is not a verified runtime.'
+          exit 1
+      - name: Install APK and capture native app startup (silent video)
+        timeout-minutes: 3
+        run: |
+          adb install -r pleos-demo/android/app/build/outputs/apk/debug/app-debug.apk > "$EVIDENCE/apk-install.log"
+          adb shell screenrecord --time-limit 35 /sdcard/pleos-startup.mp4 > "$EVIDENCE/screenrecord.log" 2>&1 &
+          recorder=$!
+          adb shell am start -W -n "$APP_ID/.MainActivity" > "$EVIDENCE/app-launch.txt"
+          sleep 15
+          adb exec-out screencap -p > "$EVIDENCE/app-screen.png"
+          adb shell dumpsys activity activities > "$EVIDENCE/activity.txt"
+          adb shell dumpsys activity services "$APP_ID" > "$EVIDENCE/app-services.txt"
+          adb shell service list > "$EVIDENCE/system-services.txt"
+          adb shell dumpsys package "$APP_ID" > "$EVIDENCE/app-package.txt"
+          adb shell uiautomator dump /sdcard/pleos-window.xml > "$EVIDENCE/ui-dump.log" 2>&1 || true
+          adb pull /sdcard/pleos-window.xml "$EVIDENCE/app-window.xml" || true
+          wait "$recorder" || true
+          adb pull /sdcard/pleos-startup.mp4 "$EVIDENCE/pleos-native-startup-silent.mp4"
+          grep -F "$APP_ID/.MainActivity" "$EVIDENCE/activity.txt" > "$EVIDENCE/activity-match.txt"
+      - name: Read real native SDK readiness through debug WebView
+        timeout-minutes: 2
+        run: |
+          app_pid=$(adb shell pidof "$APP_ID" | tr -d '\r')
+          test -n "$app_pid"
+          adb forward tcp:9222 "localabstract:webview_devtools_remote_$app_pid"
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const dest = process.env.EVIDENCE;
+          const pages = await fetch('http://127.0.0.1:9222/json/list').then(r => r.json());
+          const page = pages.find(p => p.url?.startsWith('https://appassets.androidplatform.net/assets/'));
+          if (!page?.webSocketDebuggerUrl) throw new Error('Local native WebView not inspectable; SDK readiness remains unverified.');
+          const ws = new WebSocket(page.webSocketDebuggerUrl);
+          const result = await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('SDK status read timed out')), 15000);
+            ws.addEventListener('error', () => reject(new Error('WebView inspector connection failed')));
+            ws.addEventListener('open', () => ws.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {
+              expression: 'JSON.stringify({title:document.title,url:location.href,bridge:typeof window.PleosNative!=="undefined",status:window.PleosNative?JSON.parse(PleosNative.getStatus()):null})', returnByValue: true
+            }})));
+            ws.addEventListener('message', e => {
+              const msg = JSON.parse(e.data);
+              if (msg.id !== 1) return;
+              clearTimeout(timer); ws.close();
+              if (msg.error || msg.result?.exceptionDetails) reject(new Error('Native status read failed'));
+              else resolve(JSON.parse(msg.result.result.value));
+            });
+          });
+          fs.writeFileSync(`${dest}/native-sdk-status.json`, JSON.stringify(result, null, 2));
+          const s = result.status;
+          const ready = result.bridge && s?.transport === 'pleos-native' && s.ttsReady === true && s.sttReady === true && s.vehicleConnected === true && typeof s.uxRestricted === 'boolean';
+          fs.writeFileSync(`${dest}/verification.json`, JSON.stringify({bootCompleted:true,nativeStatusRead:true,sdkReady:ready,visualReviewRequired:true,audioVerified:false,microphoneVerified:false,fullConversationVerified:false}, null, 2));
+          if (!ready) throw new Error('App launched but one or more Pleos services are not ready. Inspect native-sdk-status.json; runtime integration is partial.');
+          JS
+      - name: Collect diagnostics and stop emulator
+        if: always() && inputs.acknowledge_pleos_license && steps.prepare.outcome == 'success'
+        run: |
+          mkdir -p "$EVIDENCE"
+          if command -v adb >/dev/null 2>&1; then
+            timeout 15 adb logcat -d -t 10000 > "$EVIDENCE/logcat.txt" 2>&1 || true
+            timeout 10 adb shell getprop > "$EVIDENCE/device-properties.txt" 2>&1 || true
+            timeout 10 adb emu kill || true
+          fi
+          df -h > "$EVIDENCE/disk-after.txt"
+          echo '### Pleos emulator experiment' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Inspect native-sdk-status.json and app-screen.png. ADB/device visibility alone is not SDK success.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Startup video is silent, not a completed voice/music journey. Audio, microphone and real-vehicle behavior remain unverified.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload diagnostics and silent captures only
+        if: always() && inputs.acknowledge_pleos_license
+        uses: actions/upload-artifact@v4
+        with:
+          name: pleos-emulator-evidence-${{ github.run_number }}
+          path: pleos-evidence/
+          if-no-files-found: warn
+          retention-days: 7
