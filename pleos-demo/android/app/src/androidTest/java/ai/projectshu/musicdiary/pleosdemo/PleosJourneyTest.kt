@@ -5,10 +5,12 @@ import android.graphics.Rect
 import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
-import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleCallback
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import androidx.test.uiautomator.Configurator
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject
@@ -29,6 +31,8 @@ class PleosJourneyTest {
     private val device = UiDevice.getInstance(instrumentation)
     private lateinit var scenario: ActivityScenario<MainActivity>
     private lateinit var bridge: MainActivity.NativeBridge
+    private lateinit var bridgeActivity: MainActivity
+    @Volatile private var lifecycleSnapshot: Pair<MainActivity, Stage>? = null
     private val events = JSONArray()
     private lateinit var evidence: File
 
@@ -44,10 +48,22 @@ class PleosJourneyTest {
         // Animated Canvas never becomes completely idle; observe actual UI outcomes instead.
         configuration.setWaitForIdleTimeout(1000).setWaitForSelectorTimeout(0)
         scenario = ActivityScenario.launch(MainActivity::class.java)
+        val lifecycleMonitor = ActivityLifecycleMonitorRegistry.getInstance()
+        val lifecycleCallback = ActivityLifecycleCallback { activity, stage ->
+            if (::bridgeActivity.isInitialized && activity === bridgeActivity) {
+                lifecycleSnapshot = bridgeActivity to stage
+            }
+        }
         try {
             // Capture the real bridge once. Its status reads only volatile cached values;
-            // onActivity on every poll needlessly waits for the animated WebView to idle.
-            scenario.onActivity { bridge = it.NativeBridge() }
+            // both onActivity and ActivityScenario.getState() wait for UI idle on every call.
+            scenario.onActivity {
+                bridgeActivity = it
+                lifecycleMonitor.addLifecycleCallback(lifecycleCallback)
+                // Lifecycle queries and callbacks run on the main thread. Never assume RESUMED.
+                lifecycleSnapshot = it to lifecycleMonitor.getLifecycleStageOf(it)
+                bridge = it.NativeBridge()
+            }
             // Read the actual native bridge state; never replace services or vehicle restrictions.
             waitFor("real Pleos SDK and unrestricted AAOS UX", 45000) { ready(sdkStatus()) }
             record("00-native-ready")
@@ -103,15 +119,23 @@ class PleosJourneyTest {
                 .put("passed", false).put("error", failure.toString()).put("steps", events).toString(2))
             throw failure
         } finally {
-            scenario.close()
-            configuration.setWaitForIdleTimeout(previousIdleTimeout)
-                .setWaitForSelectorTimeout(previousSelectorTimeout)
+            try {
+                scenario.close()
+            } finally {
+                lifecycleMonitor.removeLifecycleCallback(lifecycleCallback)
+                lifecycleSnapshot = null
+                configuration.setWaitForIdleTimeout(previousIdleTimeout)
+                    .setWaitForSelectorTimeout(previousSelectorTimeout)
+            }
         }
     }
 
     private fun sdkStatus(): JSONObject {
+        val observed = lifecycleSnapshot
+        assertTrue("Observe the same actual Activity that owns the bridge",
+            observed?.first === bridgeActivity)
         assertEquals("Read status only while this actual Activity is resumed",
-            Lifecycle.State.RESUMED, scenario.state)
+            Stage.RESUMED, observed?.second)
         return JSONObject(bridge.getStatus())
     }
 
@@ -197,21 +221,37 @@ class PleosJourneyTest {
         val automation = instrumentation.uiAutomation
         val roots = automation.windows.mapNotNull { it.root }
             .ifEmpty { listOfNotNull(automation.rootInActiveWindow) }
-        var selected: AccessibilityNodeInfo? = null
-        for (root in roots) {
-            if (selected == null) {
-                val matches = root.findAccessibilityNodeInfosByText(label)
-                selected = matches.firstOrNull {
-                    it.packageName?.toString() == instrumentation.targetContext.packageName &&
-                        (it.text?.toString() == label || it.contentDescription?.toString() == label) &&
-                        it.isVisibleToUser && it.isEnabled && it.isClickable &&
-                        it.actionList.any { action -> action.id == AccessibilityNodeInfo.ACTION_CLICK }
-                }
-                matches.filter { it !== selected }.forEach { it.recycle() }
+        try {
+            for (root in roots) {
+                findActualButtonInTree(root, label)?.let { return it }
             }
-            root.recycle()
+            return null
+        } finally {
+            roots.forEach { it.recycle() }
         }
-        return selected
+    }
+
+    @Suppress("DEPRECATION")
+    private fun findActualButtonInTree(node: AccessibilityNodeInfo, label: String): AccessibilityNodeInfo? {
+        // Chromium 131's findAccessibilityNodeInfosByText() returns an empty list.
+        // Traverse the actual accessibility children instead, as UiAutomator does.
+        // https://chromium.googlesource.com/chromium/src/+/131.0.6752.0/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
+        if (node.packageName?.toString() == instrumentation.targetContext.packageName &&
+            (node.text?.toString() == label || node.contentDescription?.toString() == label) &&
+            node.isVisibleToUser && node.isEnabled && node.isClickable &&
+            node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK }) {
+            // The caller owns this copy; traversal nodes are always recycled below.
+            return AccessibilityNodeInfo.obtain(node)
+        }
+        for (index in 0 until node.childCount) {
+            val child = node.getChild(index) ?: continue
+            try {
+                findActualButtonInTree(child, label)?.let { return it }
+            } finally {
+                child.recycle()
+            }
+        }
+        return null
     }
 
     private fun findVisible(label: String, timeout: Long): UiObject? =
