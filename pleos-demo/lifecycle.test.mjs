@@ -9,8 +9,8 @@ import * as core from './core.mjs';
 function harness({native=false,storedMute=false}={}) {
  const calls={play:0,pause:0,nativePlay:0,nativeListen:0,spoken:[],audioContexts:[]};
  const elements=new Map();
- function element(id='') {return {id,checked:true,value:'',textContent:'',hidden:false,muted:false,currentTime:0,duration:90,style:{},classList:{add(){}},
-  getContext(){return {};},append(){},replaceChildren(){},setAttribute(){},addEventListener(){},
+ function element(id='') {return {id,checked:true,value:'',textContent:'',hidden:false,muted:false,currentTime:0,duration:90,style:{},classList:{add(){}},children:[],
+  getContext(){return {};},append(...nodes){this.children.push(...nodes)},replaceChildren(...nodes){this.children=[...nodes]},setAttribute(){},addEventListener(){},
   play(){calls.play++;return Promise.resolve();},pause(){calls.pause++;}};}
  const document={getElementById(id){if(!elements.has(id))elements.set(id,element(id));return elements.get(id);},createElement(){return element();},addEventListener(){},body:{classList:{add(){}}}};
  const store=new Map([['pleos-muted',JSON.stringify(storedMute)]]);
@@ -31,7 +31,8 @@ function harness({native=false,storedMute=false}={}) {
  const context=vm.createContext({...core,document,window,localStorage,console,setTimeout,clearTimeout,performance,Image:class{},SpeechSynthesisUtterance:class{constructor(text){this.text=text}},requestAnimationFrame(){}});
  const source=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8').replace(/^import .*\n/,'');
  vm.runInContext(source+`\nthis.api={beginListening,cancelDemo,playTrack,applyMute,setupAudio,startSession,submit,playbackProgress,stopMusic,setSelected(){selected=TRACKS[0]},setMicWanted(value){micWanted=value},setMute(value){muted=value;applyMute()},state:()=>({auto,phase,muted,playing,talking,micWanted,listening,selected:selected?.id,previewIndex,tracks:tracks.map(t=>t.id)})};`,context);
- return {api:context.api,calls,elements,store,window};
+ function clickChoice(label){const button=elements.get('choices').children.find(node=>node.textContent===label);assert.ok(button,`Rendered choice is missing: ${label}`);return button.onclick();}
+ return {api:context.api,calls,elements,store,window,clickChoice};
 }
 for(const native of [false,true]) {
  test(`stopping during guidance never starts delayed ${native?'native':'web'} music`,async()=>{
@@ -103,4 +104,63 @@ test('web timeline keeps reading HTML media time rather than native events',()=>
  const h=harness();h.elements.get('music').currentTime=27;h.elements.get('music').duration=90;
  h.window.onPleosEvent({type:'music-progress',positionMs:5000,durationMs:20000});
  assert.equal(h.api.playbackProgress().position,27);assert.equal(h.api.playbackProgress().duration,90);
+});
+
+// These tests execute app.js button handlers with fake DOM/media only. They are
+// conversation-branch unit tests, not evidence of actual SDK/audio execution.
+const settleHandlers=()=>new Promise(resolve=>setImmediate(resolve));
+async function completeExampleOnboarding(h){
+ h.elements.get('voice').checked=false;
+ h.elements.get('start').onclick();assert.equal(h.api.state().phase,'age');
+ for(const [label,next] of [
+  ['30대','gender'],['말하지 않기','taste'],
+  ['피아노 연주곡을 즐겨 들어요','tastePick'],['1. Reverie','preview'],
+  ['이 곡으로 감상하기','state'],
+ ]){
+  h.clickChoice(label);await settleHandlers();assert.equal(h.api.state().phase,next,label);
+ }
+}
+for(const native of [false,true])test(`complete example-button journey through ${native?'mocked native bridge':'mocked web media'} saves and reopens the diary`,async()=>{
+ const h=harness({native});
+ try{
+  await completeExampleOnboarding(h);
+  assert.equal(JSON.parse(h.store.get('pleos-profile')).favorite,'reverie');
+  for(const [label,next] of [
+   ['오늘 일이 많아서 피곤해요','emotion'],
+   ['살짝 슬픈 것 같아요','need'],
+   ['휴식이 필요해요','body'],
+   ['등에서 따스함이 느껴져요','recommend'],
+   ['1. Reverie','preview'],
+   ['이 곡으로 감상하기','listening'],
+  ]){
+   h.clickChoice(label);await settleHandlers();assert.equal(h.api.state().phase,next,label);
+  }
+  // One taste preview, one session preview, and one full-listening request.
+  assert.equal(native?h.calls.nativePlay:h.calls.play,3);
+  h.clickChoice('감상 마치기');assert.equal(h.api.state().phase,'imagery');
+  h.clickChoice('포근한 이불의 느낌이 생각났어요');assert.equal(h.api.state().phase,'image');
+  h.clickChoice('이 이미지로 일기 저장');assert.equal(h.api.state().phase,'saved');
+  const entries=JSON.parse(h.store.get('pleos-diaries'));
+  assert.equal(entries.length,1);
+  assert.equal(entries[0].emotion,'살짝 슬픈 것 같아요');
+  assert.equal(entries[0].need,'휴식이 필요해요');
+  assert.equal(entries[0].body,'등에서 따스함이 느껴져요');
+  assert.equal(entries[0].imagery,'포근한 이불의 느낌이 생각났어요');
+  assert.equal(entries[0].track,'Reverie');assert.equal(entries[0].image,true);
+  assert.equal(entries[0].date,new Date().toLocaleDateString('ko-KR'));
+  h.clickChoice('일기 다시 보기');assert.equal(h.api.state().phase,'diaries');
+  assert.equal(h.api.state().selected,'reverie');
+  assert.match(h.elements.get('screen-reader').textContent,/포근한 이불의 느낌이 생각났어요/);
+ }finally{h.api.cancelDemo();h.api.stopMusic();}
+});
+test('already stated fear, frustration and tension ask for a need without asking emotion again',async()=>{
+ const h=harness();
+ try{
+  await completeExampleOnboarding(h);
+  for(const answer of ['두렵네요','두려워요','짜증이 나요','답답해요','긴장돼요','살짝 슬픈 것 같아요']){
+   h.api.startSession();assert.equal(h.api.state().phase,'state');
+   h.api.submit(answer);assert.equal(h.api.state().phase,'need',answer);
+   assert.ok(h.elements.get('choices').children.some(button=>button.textContent==='휴식이 필요해요'));
+  }
+ }finally{h.api.cancelDemo();h.api.stopMusic();}
 });

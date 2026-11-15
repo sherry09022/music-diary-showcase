@@ -3,12 +3,12 @@ export const TRACKS = [
  {id:'hiraeth',title:'Hiraeth',artist:'Scott Buckley',color:'#78c6c8',texture:'첼로 · 낮고 넓게 퍼지는 울림',tags:['첼로','현악','넓','만족','묵직','깊'],file:'assets/hiraeth.mp3'},
  {id:'filaments',title:'Filaments',artist:'Scott Buckley',color:'#d6b78c',texture:'피아노와 현악 · 섬세한 여운',tags:['현악','피아노','슬픔','위로','그리움'],file:'assets/filaments.mp3'},
 ];
-export function negative(text){return /불안|초조|슬프|슬퍼|슬픔|무섭|무서|두렵|두려|화가|분노|짜증|우울|걱정|답답|긴장/.test(text);}
-export function emotion(text){return /불안|초조|슬프|슬퍼|슬픔|무섭|무서|화가|분노|우울|걱정|기쁘|기뻐|행복|편안|만족|설레|즐거/.test(text);}
+export function negative(text){return /불안|초조|슬프|슬퍼|슬픔|슬픈|무섭|무서|두렵|두려|화가|분노|짜증|우울|걱정|답답|긴장/.test(text);}
+export function emotion(text){return negative(text)||/기쁘|기뻐|행복|편안|만족|설레|즐거/.test(text);}
 export function reflect(text){
  if(/화가|분노/.test(text))return '화가 나시는군요.';
  if(/무섭|무서|두렵|두려/.test(text))return '무서운 마음이 드시는군요.';
- if(/슬프|슬퍼|슬픔/.test(text))return '슬픈 마음이 드시는군요.';
+ if(/슬프|슬퍼|슬픔|슬픈/.test(text))return '슬픈 마음이 드시는군요.';
  if(/불안|초조/.test(text))return '마음이 불안하고 조급하시군요.';
  if(/피곤|지쳤|지쳐/.test(text))return '많이 피곤하셨군요.';
  if(/편안/.test(text))return '편안함을 느끼고 계시는군요.';
