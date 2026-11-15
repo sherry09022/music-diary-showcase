@@ -23,6 +23,7 @@ jobs:
     env:
       EVIDENCE: ${{ github.workspace }}/pleos-evidence
       APP_ID: ai.projectshu.musicdiary.pleosdemo
+      ANDROID_AVD_HOME: ${{ runner.temp }}/pleos-avd
       PLEOS_IMAGE: system-images;android-34;pleos_car_emulator;x86_64
       PLEOS_REPOSITORY: https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-sys-img.xml
     steps:
@@ -124,13 +125,19 @@ jobs:
           fi
       - name: Create AVD from installed official image
         run: |
+          mkdir -p "$ANDROID_AVD_HOME"
           avdmanager list device > "$EVIDENCE/available-device-profiles.txt"
           if ! grep -F '"Pleos_Connect_v2_0"' "$EVIDENCE/available-device-profiles.txt"; then
             echo '::error::Official Pleos_Connect_v2_0 hardware profile is absent. Refusing a generic device substitute.'
             exit 1
           fi
-          printf 'no\n' | avdmanager create avd --force --name pleos_ci --package "$PLEOS_IMAGE" --device Pleos_Connect_v2_0 > "$EVIDENCE/avd-create.log" 2>&1
-          cp "$HOME/.android/avd/pleos_ci.avd/config.ini" "$EVIDENCE/avd-config.ini"
+          printf 'no\n' | avdmanager create avd --force --name pleos_ci --package "$PLEOS_IMAGE" --device Pleos_Connect_v2_0 --path "$ANDROID_AVD_HOME/pleos_ci.avd" > "$EVIDENCE/avd-create.log" 2>&1
+          avdmanager list avd > "$EVIDENCE/available-avds.txt" 2>&1 || true
+          if [ -f "$ANDROID_AVD_HOME/pleos_ci.avd/config.ini" ]; then
+            cp "$ANDROID_AVD_HOME/pleos_ci.avd/config.ini" "$EVIDENCE/avd-config.ini" || true
+          else
+            printf 'Config diagnostic unavailable at %s; see available-avds.txt.\n' "$ANDROID_AVD_HOME/pleos_ci.avd/config.ini" > "$EVIDENCE/avd-config-note.txt"
+          fi
           if [ ! -e /dev/kvm ]; then
             echo '::error::KVM unavailable on this runner; stopping instead of unbounded software CPU emulation.'
             exit 1
