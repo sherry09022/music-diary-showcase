@@ -7,7 +7,7 @@
 ## 설치 파일과 검증
 
 - [Pleos 차량 환경용 데모 APK](downloads/music-diary-pleos-debug.apk) · [SHA-256](downloads/SHA256SUMS)
-- [실행 화면 시연 영상](watch.html) · [빌드 검증 기록](downloads/build-verification.json)
+- [웹 시연 영상](watch.html) · [실제 Pleos OS 실행 확인 · 약 30초 무음](watch.html#native) · [빌드 검증 기록](downloads/build-verification.json)
 - [실제 SDK 컴파일·lint 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43719447420): APK 소스 `ee6ac13`, 오류 0개·경고 10개, 웹 회귀 18개 통과.
 - [실제 Pleos 실행 검증](https://github.com/sherry09022/music-diary-showcase/actions/runs/43720666159): OS·앱 실행, TTS/STT/Vehicle 준비, AAOS UX 허용 상태와 `ko-KR` ON_DEVICE 음성의 PCM 생성·AudioTrack 기록 완료를 확인했습니다. 전체 UI 여정은 연령 선택 후 다음 화면 전환 검사에서 실패했습니다.
 
@@ -64,6 +64,8 @@ cd pleos-demo/android
 [인스타용 세로 편집본 (1080×1920)](video/music-diary-web-instagram-vertical.mp4)은 같은 녹화의 전체 화면과 대화 확대 화면을 함께 배치했습니다. 원본 안내 음성과 음악을 보존했습니다.
 
 2026-11-15 공개 웹 데모를 직접 실행하고 Canvas/MediaRecorder로 화면과 안내·음악을 녹화했습니다. 실제 Pleos OS 녹화가 아닌 **웹 모의 실행 화면**입니다. 인식된 대답은 자동 시연 예시이며, 실시간 마이크 검증 영상은 아닙니다.
+
+[실제 Pleos OS 실행 확인 영상](watch.html#native)은 별도 자료입니다. 실행 `43720666159`의 실제 녹화 155–185초를 원본 1280×720 해상도로 발췌했습니다. ON_DEVICE SDK가 연결된 앱의 시작→연령대 질문까지만 보여주며, 화면의 예시 버튼으로 진행한 검증입니다. 전체 음악 감상·일기 저장·마이크 인식의 검증 영상은 아닙니다. 약 30초이며 오디오 트랙이 없는 무음 영상입니다.
 
 ## 시연 영상 캡처
 

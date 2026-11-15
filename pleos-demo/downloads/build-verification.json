@@ -48,5 +48,26 @@
   "physicalSpeakerVerified": false,
   "physicalVehicleVerified": false,
   "recordedVideo": "web-simulator",
-  "apiKeysRequired": false
+  "apiKeysRequired": false,
+  "nativeRecording": {
+    "path": "video/music-diary-pleos-native-onboarding-silent.mp4",
+    "poster": "video/music-diary-pleos-native-onboarding-poster.jpg",
+    "sourceRun": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43720666159",
+    "sourceRecording": "pleos-native-journey-silent.mp4",
+    "sourceRangeSeconds": [
+      155,
+      185
+    ],
+    "scope": {
+      "shown": "Actual Pleos OS app startup to the age question with the ON_DEVICE SDK connected",
+      "interaction": "example buttons; not microphone input",
+      "audio": "silent; no audio track",
+      "notVerified": [
+        "full music listening flow",
+        "diary saving",
+        "microphone recognition",
+        "physical speaker output"
+      ]
+    }
+  }
 }
