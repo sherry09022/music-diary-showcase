@@ -73,6 +73,7 @@ class MainActivity : Activity() {
         }
     }
     private var vehicleRequest = 0
+    private var vehicleInitialized = false
     private var car: Car? = null
     private var uxManager: CarUxRestrictionsManager? = null
     @Volatile private var uxRestricted: Boolean? = null
@@ -175,31 +176,44 @@ class MainActivity : Activity() {
     private fun initializeSdk() {
         initialized = true
         // ON_DEVICE explicitly prevents silent fallback to a paid/server mode.
-        tts = TextToSpeech(applicationContext, TtsMode.ON_DEVICE)
-        stt = SpeechToText(applicationContext, SttMode.ON_DEVICE)
-        vehicle = Vehicle(applicationContext)
-        tts.addEventListener(ttsEvents)
-        stt.addListener(sttEvents)
-        tts.initialize(object : TtsInitializeListener {
-            override fun onSuccess() {
-                if (!alive) return
-                ttsReady = true
-                tts.setLocale(Locale.KOREAN)
-                tts.setAudioAttributes(speechAttributes)
-                publishStatus()
-            }
-            override fun onFailure(errorType: TtsError) = error("tts-init", errorType.name)
-        })
-        stt.initialize(object : SttInitializeListener {
-            override fun onSuccess() {
-                if (!alive) return
-                sttReady = true
-                stt.setLocale(Locale.KOREAN)
-                publishStatus()
-            }
-            override fun onFailure(errorType: SttError) = error("stt-init", errorType.name)
-        })
-        runCatching { vehicle.initialize() }.onFailure { error("vehicle-init", it.javaClass.simpleName) }
+        // SDK listeners and configuration access the bound service: use them only after onSuccess.
+        runCatching {
+            tts = TextToSpeech(applicationContext, TtsMode.ON_DEVICE)
+            tts.initialize(object : TtsInitializeListener {
+                override fun onSuccess() {
+                    if (!alive) return
+                    runCatching {
+                        tts.addEventListener(ttsEvents)
+                        tts.setLocale(Locale.KOREAN)
+                        tts.setAudioAttributes(speechAttributes)
+                    }.onSuccess { ttsReady = true }
+                        .onFailure { error("tts-init", it.javaClass.simpleName) }
+                    publishStatus()
+                }
+                override fun onFailure(errorType: TtsError) = error("tts-init", errorType.name)
+            })
+        }.onFailure { error("tts-init", it.javaClass.simpleName) }
+        runCatching {
+            stt = SpeechToText(applicationContext, SttMode.ON_DEVICE)
+            stt.initialize(object : SttInitializeListener {
+                override fun onSuccess() {
+                    if (!alive) return
+                    runCatching {
+                        stt.addListener(sttEvents)
+                        stt.setLocale(Locale.KOREAN)
+                    }.onSuccess { sttReady = true }
+                        .onFailure { error("stt-init", it.javaClass.simpleName) }
+                    publishStatus()
+                }
+                override fun onFailure(errorType: SttError) = error("stt-init", errorType.name)
+            })
+        }.onFailure { error("stt-init", it.javaClass.simpleName) }
+        runCatching {
+            vehicle = Vehicle(applicationContext)
+            vehicle.initialize()
+            vehicleInitialized = true
+            main.postDelayed({ if (alive) queryVehicle() }, 1200)
+        }.onFailure { error("vehicle-init", it.javaClass.simpleName) }
         // Some AAOS builds supply car classes through the bootclasspath, not a named shared library.
         // Keep actual UX restrictions unknown if those classes cannot be loaded.
         carApiAvailable = runCatching {
@@ -212,7 +226,6 @@ class MainActivity : Activity() {
             error("car-ux", "CAR_API_UNAVAILABLE")
             publishStatus()
         }
-        main.postDelayed({ if (alive) queryVehicle() }, 1200)
     }
 
     @Suppress("DEPRECATION") // Asynchronous ServiceConnection overload also supports API 28.
@@ -251,7 +264,7 @@ class MainActivity : Activity() {
 
     @SuppressLint("MissingPermission") // Custom Pleos permission is declared; SDK reports permission denial asynchronously.
     private fun queryVehicle() {
-        if (!alive || !initialized) return
+        if (!alive || !vehicleInitialized) return
         val request = ++vehicleRequest
         val brake = vehicle.getBrake()
         main.postDelayed({
@@ -477,11 +490,17 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         alive = false
         main.removeCallbacksAndMessages(null)
-        if (initialized) {
-            runCatching { stt.stop(); stt.removeListener(sttEvents); stt.release() }
-            runCatching { tts.stop(); tts.removeEventListener(ttsEvents); tts.release() }
-            runCatching { vehicle.release() }
+        if (::stt.isInitialized) {
+            runCatching { stt.stop() }
+            runCatching { stt.removeListener(sttEvents) }
+            runCatching { stt.release() }
         }
+        if (::tts.isInitialized) {
+            runCatching { tts.stop() }
+            runCatching { tts.removeEventListener(ttsEvents) }
+            runCatching { tts.release() }
+        }
+        if (::vehicle.isInitialized) runCatching { vehicle.release() }
         runCatching { uxManager?.unregisterListener(); car?.disconnect() }
         releasePlayer()
         webView.removeJavascriptInterface("PleosNative")
