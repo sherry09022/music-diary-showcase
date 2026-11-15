@@ -7,7 +7,7 @@ import * as core from './core.mjs';
 // Execute the real application state machine with small DOM/audio test doubles.
 // This tests deferred speech/music cancellation without running a browser.
 function harness({native=false,storedMute=false}={}) {
- const calls={play:0,pause:0,nativePlay:0,spoken:[]};
+ const calls={play:0,pause:0,nativePlay:0,spoken:[],audioContexts:[]};
  const elements=new Map();
  function element(id='') {return {id,checked:true,value:'',textContent:'',hidden:false,muted:false,currentTime:0,duration:90,style:{},classList:{add(){}},
   getContext(){return {};},append(){},replaceChildren(){},setAttribute(){},addEventListener(){},
@@ -15,11 +15,22 @@ function harness({native=false,storedMute=false}={}) {
  const document={getElementById(id){if(!elements.has(id))elements.set(id,element(id));return elements.get(id);},createElement(){return element();},addEventListener(){},body:{classList:{add(){}}}};
  const store=new Map([['pleos-muted',JSON.stringify(storedMute)]]);
  const localStorage={getItem(k){return store.get(k)||null;},setItem(k,v){store.set(k,v)},removeItem(k){store.delete(k)}};
- const window={addEventListener(){},speechSynthesis:{cancel(){},speak(u){calls.spoken.push(u)}}};
+ class FakeAudioContext {
+  constructor(){this.currentTime=0;this.nodes=[];this.destination=this.node('speaker');calls.audioContexts.push(this);}
+  node(kind){const n={kind,connections:[],connect(target){this.connections.push(target)}};this.nodes.push(n);return n;}
+  createMediaElementSource(element){const n=this.node('source');n.element=element;return n;}
+  createMediaStreamDestination(){return this.node('recording');}
+  createGain(){const n=this.node('gain');n.gain={value:1,cancelScheduledValues(){},setValueAtTime(value){this.value=value}};return n;}
+  resume(){return Promise.resolve();}
+  // Deliberately ignore HTMLMediaElement.muted: both sinks must be protected by
+  // the Web Audio graph itself, even if each media source still emits a signal.
+  sampleAt(kind){const walk=(node,level)=>{const output=level*(node.gain?.value??1);return node.kind===kind?output:node.connections.reduce((sum,next)=>sum+walk(next,output),0)};return this.nodes.filter(n=>n.kind==='source').reduce((sum,n)=>sum+walk(n,1),0);}
+ }
+ const window={AudioContext:FakeAudioContext,addEventListener(){},speechSynthesis:{cancel(){},speak(u){calls.spoken.push(u)}}};
  if(native)window.PleosNative={getStatus:()=>JSON.stringify({uxRestricted:false}),speak(){},stopSpeaking(){},stopListening(){},pauseAudio(){},playAudio(){calls.nativePlay++},listen(){}};
  const context=vm.createContext({...core,document,window,localStorage,console,setTimeout,clearTimeout,performance,Image:class{},SpeechSynthesisUtterance:class{constructor(text){this.text=text}},requestAnimationFrame(){}});
  const source=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8').replace(/^import .*\n/,'');
- vm.runInContext(source+`\nthis.api={beginListening,cancelDemo,playTrack,applyMute,startSession,submit,setSelected(){selected=TRACKS[0]},setMute(value){muted=value;applyMute()},state:()=>({auto,phase,muted,playing,talking,selected:selected?.id,previewIndex,tracks:tracks.map(t=>t.id)})};`,context);
+ vm.runInContext(source+`\nthis.api={beginListening,cancelDemo,playTrack,applyMute,setupAudio,startSession,submit,setSelected(){selected=TRACKS[0]},setMute(value){muted=value;applyMute()},state:()=>({auto,phase,muted,playing,talking,selected:selected?.id,previewIndex,tracks:tracks.map(t=>t.id)})};`,context);
  return {api:context.api,calls,elements,store,window};
 }
 for(const native of [false,true]) {
@@ -51,4 +62,17 @@ test('a vehicle telemetry error does not terminate an independent voice turn',as
  const h=harness({native:true});h.api.setSelected();const pending=h.api.beginListening('이 곡이 좋겠어요');
  assert.equal(h.api.state().talking,true);h.window.onPleosEvent({type:'error',component:'vehicle-capability',code:'UNAVAILABLE'});
  assert.equal(h.api.state().talking,true);assert.equal(h.calls.nativePlay,0);h.api.cancelDemo();await pending;
+});
+
+test('recording audio graph mutes both speakers and saved audio without pausing the timeline',async()=>{
+ const h=harness();await h.api.setupAudio();const graph=h.calls.audioContexts[0];
+ assert.equal(graph.sampleAt('speaker'),2);assert.equal(graph.sampleAt('recording'),2);
+ const pauses=h.calls.pause;h.api.setMute(true);
+ assert.equal(graph.sampleAt('speaker'),0);assert.equal(graph.sampleAt('recording'),0);assert.equal(h.calls.pause,pauses);
+ await h.api.setupAudio();assert.equal(h.calls.audioContexts.length,1);assert.equal(graph.sampleAt('speaker'),0);assert.equal(graph.sampleAt('recording'),0);
+ h.api.setMute(false);assert.equal(graph.sampleAt('speaker'),2);assert.equal(graph.sampleAt('recording'),2);assert.equal(h.calls.play,0);
+});
+test('recording created with saved mute starts with zero output on both sinks',async()=>{
+ const h=harness({storedMute:true});await h.api.setupAudio();const graph=h.calls.audioContexts[0];
+ assert.equal(graph.sampleAt('speaker'),0);assert.equal(graph.sampleAt('recording'),0);assert.equal(h.calls.play,0);
 });
