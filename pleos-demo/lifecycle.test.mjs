@@ -30,7 +30,7 @@ function harness({native=false,storedMute=false}={}) {
  if(native)window.PleosNative={getStatus:()=>JSON.stringify({uxRestricted:false}),speak(){window.onPleosEvent?.({type:'music-pause'})},stopSpeaking(){},stopListening(){},pauseAudio(){window.onPleosEvent?.({type:'music-pause'})},playAudio(){calls.nativePlay++},listen(){calls.nativeListen++;window.onPleosEvent?.({type:'listening',active:true})}};
  const context=vm.createContext({...core,document,window,localStorage,console,setTimeout,clearTimeout,performance,Image:class{},SpeechSynthesisUtterance:class{constructor(text){this.text=text}},requestAnimationFrame(){}});
  const source=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8').replace(/^import .*\n/,'');
- vm.runInContext(source+`\nthis.api={beginListening,cancelDemo,playTrack,applyMute,setupAudio,startSession,submit,setSelected(){selected=TRACKS[0]},setMicWanted(value){micWanted=value},setMute(value){muted=value;applyMute()},state:()=>({auto,phase,muted,playing,talking,micWanted,listening,selected:selected?.id,previewIndex,tracks:tracks.map(t=>t.id)})};`,context);
+ vm.runInContext(source+`\nthis.api={beginListening,cancelDemo,playTrack,applyMute,setupAudio,startSession,submit,playbackProgress,stopMusic,setSelected(){selected=TRACKS[0]},setMicWanted(value){micWanted=value},setMute(value){muted=value;applyMute()},state:()=>({auto,phase,muted,playing,talking,micWanted,listening,selected:selected?.id,previewIndex,tracks:tracks.map(t=>t.id)})};`,context);
  return {api:context.api,calls,elements,store,window};
 }
 for(const native of [false,true]) {
@@ -89,4 +89,18 @@ test('normal native music-pause during first question preserves automatic listen
 for(const type of ['audio-focus-lost','suspended'])test(`native ${type} still stops the conversation`,()=>{
  const h=harness({native:true});h.api.setMicWanted(true);h.window.onPleosEvent({type});
  assert.equal(h.api.state().micWanted,false);assert.equal(h.api.state().listening,false);
+});
+
+test('native timeline uses measured progress, survives pause and resets for a new play request',async()=>{
+ const h=harness({native:true});h.elements.get('music').currentTime=77;h.elements.get('music').duration=123;
+ h.window.onPleosEvent({type:'music-progress',positionMs:12450,durationMs:90123});
+ assert.equal(h.api.playbackProgress().position,12.45);assert.equal(h.api.playbackProgress().duration,90.123);
+ h.window.onPleosEvent({type:'music-pause'});h.api.stopMusic();assert.equal(h.api.playbackProgress().position,12.45);
+ await h.api.playTrack(core.TRACKS[1],false);assert.equal(h.api.playbackProgress().position,0);assert.equal(h.api.playbackProgress().duration,0);
+ h.window.onPleosEvent({type:'music-progress',positionMs:2300,durationMs:91000});assert.equal(h.api.playbackProgress().position,2.3);
+});
+test('web timeline keeps reading HTML media time rather than native events',()=>{
+ const h=harness();h.elements.get('music').currentTime=27;h.elements.get('music').duration=90;
+ h.window.onPleosEvent({type:'music-progress',positionMs:5000,durationMs:20000});
+ assert.equal(h.api.playbackProgress().position,27);assert.equal(h.api.playbackProgress().duration,90);
 });

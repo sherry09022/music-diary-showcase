@@ -59,10 +59,19 @@ class MainActivity : Activity() {
     @Volatile private var listening = false
     @Volatile private var speaking = false
     @Volatile private var musicActive = false
+    @Volatile private var musicPlaying = false
+    @Volatile private var positionMs = 0
+    @Volatile private var durationMs = 0
     private var pendingListen = false
     private var player: MediaPlayer? = null
     private var focus: AudioFocusRequest? = null
     private var focusOwner: String? = null
+    private val musicProgress = object : Runnable {
+        override fun run() {
+            updateMusicProgress()
+            if (alive && musicActive && player != null) main.postDelayed(this, 1000)
+        }
+    }
     private var vehicleRequest = 0
     private var car: Car? = null
     private var uxManager: CarUxRestrictionsManager? = null
@@ -338,7 +347,10 @@ class MainActivity : Activity() {
             next.setOnPreparedListener {
                 if (player === it && musicActive && foreground) {
                     it.start()
-                    emit("music-start", "asset" to asset)
+                    updateMusicProgress()
+                    emit("music-start", "asset" to asset, "durationMs" to durationMs)
+                    main.removeCallbacks(musicProgress)
+                    main.postDelayed(musicProgress, 1000)
                 }
             }
             next.setOnCompletionListener { emit("music-end"); releasePlayer() }
@@ -350,17 +362,37 @@ class MainActivity : Activity() {
     }
 
     private fun pauseMusic() {
+        main.removeCallbacks(musicProgress)
         musicActive = false
         runCatching { player?.pause() }
+        updateMusicProgress()
         abandonFocus()
         emit("music-pause")
     }
 
     private fun releasePlayer() {
+        main.removeCallbacks(musicProgress)
         musicActive = false
         runCatching { player?.release() }
         player = null
+        musicPlaying = false
+        positionMs = 0
+        durationMs = 0
+        emit("music-progress", "positionMs" to positionMs, "durationMs" to durationMs,
+            "musicPlaying" to false)
         abandonFocus()
+    }
+
+    /** Called only on the main thread; JS receives cached values without touching MediaPlayer. */
+    private fun updateMusicProgress() {
+        val current = player
+        musicPlaying = current != null && runCatching { current.isPlaying }.getOrDefault(false)
+        if (current != null) {
+            positionMs = runCatching { current.currentPosition }.getOrDefault(positionMs).coerceAtLeast(0)
+            durationMs = runCatching { current.duration }.getOrDefault(durationMs).coerceAtLeast(0)
+        }
+        emit("music-progress", "positionMs" to positionMs, "durationMs" to durationMs,
+            "musicPlaying" to musicPlaying)
     }
 
     private fun requestFocus(attributes: AudioAttributes, gain: Int, owner: String): Boolean {
@@ -392,6 +424,7 @@ class MainActivity : Activity() {
         .put("vehicleConnected", vehicleConnected).put("parked", JSONObject.NULL)
         .put("uxRestricted", uxRestricted ?: JSONObject.NULL)
         .put("activeRestrictions", activeRestrictions ?: JSONObject.NULL)
+        .put("musicPlaying", musicPlaying).put("positionMs", positionMs).put("durationMs", durationMs)
         .put("mode", "ON_DEVICE").put("speaking", speaking).put("listening", listening)
 
     private fun publishStatus() {

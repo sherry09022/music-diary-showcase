@@ -53,7 +53,7 @@ jobs:
         run: |
           node --test *.test.mjs
       - name: Compile actual Pleos SDK integration and lint
-        run: ./gradlew --no-daemon :app:assembleDebug :app:lintDebug --stacktrace
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
       - name: Upload installable debug APK and lint report
         uses: actions/upload-artifact@v4
         with:

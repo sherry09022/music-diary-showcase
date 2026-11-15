@@ -1,0 +1,194 @@
+package ai.projectshu.musicdiary.pleosdemo
+
+import android.media.AudioManager
+import android.os.SystemClock
+import android.util.Log
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiObject
+import androidx.test.uiautomator.UiScrollable
+import androidx.test.uiautomator.UiSelector
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
+
+/** Real accessibility clicks only. No DOM evaluation, JS state writes, SDK mocks, or VHAL writes. */
+@RunWith(AndroidJUnit4::class)
+class PleosJourneyTest {
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val device = UiDevice.getInstance(instrumentation)
+    private lateinit var scenario: ActivityScenario<MainActivity>
+    private val events = JSONArray()
+    private lateinit var evidence: File
+
+    @Test
+    fun parkedNativeJourneyWithExampleAnswers() {
+        assertEquals("Explicit runtime gate is required", "true",
+            InstrumentationRegistry.getArguments().getString("allowPleosJourney"))
+        evidence = File(instrumentation.targetContext.getExternalFilesDir(null), "journey-evidence")
+        evidence.mkdirs()
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            // Read the actual native bridge state; never replace services or vehicle restrictions.
+            waitFor("real Pleos SDK and unrestricted AAOS UX", 45000) { ready(sdkStatus()) }
+            record("00-native-ready")
+            tap("직접 체험")
+            tap("30대")
+            tap("말하지 않기")
+            tap("피아노 연주곡을 즐겨 들어요")
+            record("01-onboarding-taste")
+            tapFirstTrack()
+            waitMusicOutput()
+            hold(6000)
+            record("02-taste-preview")
+            tap("이 곡으로 감상하기")
+            tap("오늘 일이 많아서 피곤해요")
+            tap("살짝 슬픈 것 같아요")
+            tap("휴식이 필요해요")
+            tap("등에서 따스함이 느껴져요")
+            record("03-personal-recommendation")
+            tapFirstTrack()
+            waitMusicOutput()
+            hold(6000)
+            record("04-music-preview")
+            tap("이 곡으로 감상하기")
+            waitFor("actual native music-start UI", 15000) {
+                device.findObject(UiSelector().text("음악 잠시 멈춤")).exists() ||
+                    device.findObject(UiSelector().description("음악 잠시 멈춤")).exists()
+            }
+            waitMusicOutput()
+            hold(10000)
+            record("05-listening")
+            tap("감상 마치기")
+            tap("포근한 이불의 느낌이 생각났어요")
+            record("06-imagery")
+            tap("이 이미지로 일기 저장")
+            assertTrue("Saved diary action must appear", findVisible("일기 다시 보기", 10000) != null)
+            record("07-diary-saved")
+            tap("일기 다시 보기")
+            record("08-diary-reopened")
+            hold(3000)
+            File(evidence, "result.json").writeText(JSONObject()
+                .put("passed", true).put("interaction", "real accessibility button taps")
+                .put("sdkState", sdkStatus()).put("steps", events)
+                .put("audioStreamActiveObserved", true)
+                .put("ownMediaPlayerPositionAdvanced", true)
+                .put("acousticOutputVerified", false).put("microphoneRecognitionVerified", false)
+                .put("image", "pre-created comforter example, not generated during this test")
+                .toString(2))
+        } catch (failure: Throwable) {
+            runCatching { record("failure") }
+            File(evidence, "result.json").writeText(JSONObject()
+                .put("passed", false).put("error", failure.toString()).put("steps", events).toString(2))
+            throw failure
+        } finally {
+            scenario.close()
+        }
+    }
+
+    private fun sdkStatus(): JSONObject {
+        var result = JSONObject()
+        scenario.onActivity { result = JSONObject(it.NativeBridge().getStatus()) }
+        return result
+    }
+
+    private fun ready(state: JSONObject): Boolean = state.optString("transport") == "pleos-native" &&
+        state.optBoolean("ttsReady") && state.optBoolean("sttReady") &&
+        state.optBoolean("vehicleConnected") && state.has("uxRestricted") &&
+        !state.isNull("uxRestricted") && !state.getBoolean("uxRestricted")
+
+    private fun assertSafe() {
+        assertTrue("Real SDK readiness or AAOS UX allowance was lost; stop instead of bypassing it",
+            ready(sdkStatus()))
+    }
+
+    private fun tap(label: String) {
+        assertSafe()
+        val target = findVisible(label, 12000)
+        assertTrue("Accessible button not found: $label. Use a fresh demo install.", target != null)
+        assertTrue("Button click failed: $label", target!!.click())
+        events.put(JSONObject().put("action", "tap").put("label", label)
+            .put("elapsedMs", SystemClock.elapsedRealtime()))
+        SystemClock.sleep(700)
+        waitFor("question speech completion", 25000) { !sdkStatus().optBoolean("speaking") }
+        assertSafe()
+    }
+
+    private fun tapFirstTrack() {
+        assertSafe()
+        val text = UiSelector().textMatches("1\\. .+")
+        val description = UiSelector().descriptionMatches("1\\. .+")
+        val target = findVisibleSelector(text, description, 12000)
+        assertTrue("First track accessibility button not found", target != null)
+        assertTrue("First track click failed", target!!.click())
+        events.put(JSONObject().put("action", "tap first track").put("elapsedMs", SystemClock.elapsedRealtime()))
+        SystemClock.sleep(500)
+    }
+
+    private fun findVisible(label: String, timeout: Long): UiObject? =
+        findVisibleSelector(UiSelector().text(label), UiSelector().description(label), timeout)
+
+    private fun findVisibleSelector(text: UiSelector, description: UiSelector, timeout: Long): UiObject? {
+        val deadline = SystemClock.elapsedRealtime() + timeout
+        while (SystemClock.elapsedRealtime() < deadline) {
+            for (selector in listOf(text, description)) {
+                val candidate = device.findObject(selector)
+                if (candidate.exists() && !candidate.visibleBounds.isEmpty) return candidate
+                // HTML buttons can be below the automotive canvas. Scroll the actual WebView.
+                runCatching {
+                    UiScrollable(UiSelector().scrollable(true).instance(0))
+                        .setAsVerticalList().setMaxSearchSwipes(6).scrollIntoView(selector)
+                }
+                val afterScroll = device.findObject(selector)
+                if (afterScroll.exists() && !afterScroll.visibleBounds.isEmpty) return afterScroll
+            }
+            SystemClock.sleep(250)
+        }
+        return null
+    }
+
+    private fun waitMusicOutput() {
+        val audio = instrumentation.targetContext.getSystemService(AudioManager::class.java)
+        waitFor("active app MediaPlayer and media stream", 10000) {
+            val state = sdkStatus()
+            audio.isMusicActive && state.optBoolean("musicPlaying") && state.optInt("durationMs") > 0
+        }
+        val firstPosition = sdkStatus().optInt("positionMs")
+        waitFor("the app's own MediaPlayer position to advance", 6000) {
+            val state = sdkStatus()
+            state.optBoolean("musicPlaying") && state.optInt("positionMs") > firstPosition + 250
+        }
+    }
+
+    private fun hold(milliseconds: Long) {
+        val deadline = SystemClock.elapsedRealtime() + milliseconds
+        while (SystemClock.elapsedRealtime() < deadline) {
+            assertSafe()
+            SystemClock.sleep(250)
+        }
+    }
+
+    private fun waitFor(label: String, timeout: Long, condition: () -> Boolean) {
+        val deadline = SystemClock.elapsedRealtime() + timeout
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (condition()) return
+            SystemClock.sleep(250)
+        }
+        throw AssertionError("Timed out waiting for $label")
+    }
+
+    private fun record(label: String) {
+        Log.i("PleosJourney", label)
+        device.takeScreenshot(File(evidence, "$label.png"))
+        device.dumpWindowHierarchy(File(evidence, "$label.xml"))
+        events.put(JSONObject().put("checkpoint", label).put("sdkState", sdkStatus())
+            .put("elapsedMs", SystemClock.elapsedRealtime()))
+        File(evidence, "steps.json").writeText(events.toString(2))
+    }
+}

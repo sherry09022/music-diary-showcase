@@ -54,6 +54,22 @@ jobs:
         with:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: false
+      - name: Prepare Linux emulator runtime before downloading Pleos image
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libpulse0
+          sdkmanager emulator > "$EVIDENCE/google-emulator-install.log" 2>&1
+          echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
+          ldd "$ANDROID_HOME/emulator/qemu/linux-x86_64/qemu-system-x86_64" > "$EVIDENCE/emulator-linked-libraries.txt" 2>&1
+          if grep -F 'not found' "$EVIDENCE/emulator-linked-libraries.txt"; then
+            echo '::error::Linux emulator shared libraries are missing. Stopping before Pleos image download.'
+            exit 1
+          fi
+          if ! "$ANDROID_HOME/emulator/emulator" -version > "$EVIDENCE/emulator-version.txt" 2>&1; then
+            cat "$EVIDENCE/emulator-version.txt"
+            echo '::error::Google emulator runtime check failed before Pleos image download.'
+            exit 1
+          fi
       - uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: true
@@ -61,7 +77,7 @@ jobs:
         working-directory: pleos-demo/android
         run: |
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-          ./gradlew --no-daemon :app:assembleDebug --stacktrace 2>&1 | tee "$EVIDENCE/build.log"
+          ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace 2>&1 | tee "$EVIDENCE/build.log"
       - name: Register official image repository and inspect metadata
         run: |
           python3 - <<'PY'
@@ -91,7 +107,7 @@ jobs:
             echo "::error::Official Pleos image was not discovered via extra provider $PLEOS_REPOSITORY. See sdk-extra-provider.txt and sdk-packages.log; no substitute image will be used."
             exit 1
           fi
-      - name: Install licensed Pleos image and emulator
+      - name: Install or validate licensed Pleos image
         timeout-minutes: 12
         run: |
           # Acceptance is permitted only after the explicit workflow input gate above.
@@ -99,7 +115,7 @@ jobs:
           set +e
           set +o pipefail
           printf 'sdkmanager extra provider: %s\n' "$PLEOS_REPOSITORY" > "$EVIDENCE/image-install.log"
-          yes | SDKMANAGER_OPTS="-Dandroid.sdk.custom.url=$PLEOS_REPOSITORY" sdkmanager "$PLEOS_IMAGE" emulator >> "$EVIDENCE/image-install.log" 2>&1
+          yes | SDKMANAGER_OPTS="-Dandroid.sdk.custom.url=$PLEOS_REPOSITORY" sdkmanager "$PLEOS_IMAGE" >> "$EVIDENCE/image-install.log" 2>&1
           result=${PIPESTATUS[1]}
           set -e
           set -o pipefail
@@ -108,10 +124,8 @@ jobs:
             echo '::error::Pleos image installation failed; inspect image-install.log (network, disk, license, or SDK compatibility).'
             exit "$result"
           fi
-          echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
       - name: Create AVD from installed official image
         run: |
-          emulator -version > "$EVIDENCE/emulator-version.txt" 2>&1
           avdmanager list device > "$EVIDENCE/available-device-profiles.txt"
           if ! grep -F '"Pleos_Connect_v2_0"' "$EVIDENCE/available-device-profiles.txt"; then
             echo '::error::Official Pleos_Connect_v2_0 hardware profile is absent. Refusing a generic device substitute.'
@@ -181,7 +195,8 @@ jobs:
           printf '{"captureFailed":%s,"audioRecorded":false,"visualReviewRequired":true}\n' "$capture_failed" > "$EVIDENCE/capture-status.json"
           grep -F "$APP_ID/.MainActivity" "$EVIDENCE/activity.txt" > "$EVIDENCE/activity-match.txt"
       - name: Read real native SDK readiness through debug WebView
-        timeout-minutes: 2
+        id: sdk_readiness
+        timeout-minutes: 3
         run: |
           app_pid=$(adb shell pidof "$APP_ID" | tr -d '\r')
           test -n "$app_pid"
@@ -192,27 +207,97 @@ jobs:
           const pages = await fetch('http://127.0.0.1:9222/json/list').then(r => r.json());
           const page = pages.find(p => p.url?.startsWith('https://appassets.androidplatform.net/assets/'));
           if (!page?.webSocketDebuggerUrl) throw new Error('Local native WebView not inspectable; SDK readiness remains unverified.');
-          const ws = new WebSocket(page.webSocketDebuggerUrl);
-          const result = await new Promise((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error('SDK status read timed out')), 15000);
-            ws.addEventListener('error', () => reject(new Error('WebView inspector connection failed')));
-            ws.addEventListener('open', () => ws.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {
-              expression: 'JSON.stringify({title:document.title,url:location.href,bridge:typeof window.PleosNative!=="undefined",status:window.PleosNative?JSON.parse(PleosNative.getStatus()):null})', returnByValue: true
-            }})));
-            ws.addEventListener('message', e => {
-              const msg = JSON.parse(e.data);
-              if (msg.id !== 1) return;
+          const evaluate = expression => new Promise((resolve, reject) => {
+            const ws = new WebSocket(page.webSocketDebuggerUrl);
+            const finish = (error, value) => {
               clearTimeout(timer); ws.close();
-              if (msg.error || msg.result?.exceptionDetails) reject(new Error('Native status read failed'));
-              else resolve(JSON.parse(msg.result.result.value));
+              if (error) reject(error); else resolve(value);
+            };
+            const timer = setTimeout(() => finish(new Error('SDK inspector request timed out')), 10000);
+            ws.addEventListener('error', () => finish(new Error('WebView inspector connection failed')));
+            ws.addEventListener('open', () => ws.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {expression, returnByValue: true}})));
+            ws.addEventListener('message', e => {
+              try {
+                const msg = JSON.parse(e.data);
+                if (msg.id !== 1) return;
+                if (msg.error || msg.result?.exceptionDetails) finish(new Error('Native inspector request failed'));
+                else finish(null, JSON.parse(msg.result.result.value));
+              } catch (error) { finish(error); }
             });
           });
+          const readExpression = 'JSON.stringify({title:document.title,url:location.href,bridge:typeof window.PleosNative!=="undefined",status:window.PleosNative?JSON.parse(PleosNative.getStatus()):null})';
+          const isReady = r => Boolean(r?.bridge && r.status?.transport === 'pleos-native' && r.status.ttsReady === true && r.status.sttReady === true && r.status.vehicleConnected === true && typeof r.status.uxRestricted === 'boolean');
+          const samples = [];
+          const started = Date.now(), deadline = started + 60000;
+          let result = null, refreshedVehicle = false;
+          do {
+            try {
+              result = await evaluate(readExpression);
+              samples.push({elapsedMs: Date.now() - started, result});
+              if (isReady(result)) break;
+              const s = result?.status;
+              if (!refreshedVehicle && result?.bridge && s?.transport === 'pleos-native' && s.ttsReady === true && s.sttReady === true && s.vehicleConnected === false && typeof s.uxRestricted === 'boolean') {
+                // One actual SDK re-query; never assign or replace SDK/vehicle state.
+                refreshedVehicle = true;
+                await evaluate('JSON.stringify({requested:(PleosNative.refreshVehicle(),true)})');
+                samples.push({elapsedMs: Date.now() - started, action: 'real refreshVehicle requested once'});
+              }
+            } catch (error) {
+              samples.push({elapsedMs: Date.now() - started, error: String(error)});
+            }
+            fs.writeFileSync(`${dest}/native-sdk-status-samples.json`, JSON.stringify(samples, null, 2));
+            if (Date.now() >= deadline) break;
+            await new Promise(resolve => setTimeout(resolve, Math.min(2000, deadline - Date.now())));
+          } while (Date.now() < deadline);
+          fs.writeFileSync(`${dest}/native-sdk-status-samples.json`, JSON.stringify(samples, null, 2));
           fs.writeFileSync(`${dest}/native-sdk-status.json`, JSON.stringify(result, null, 2));
-          const s = result.status;
-          const ready = result.bridge && s?.transport === 'pleos-native' && s.ttsReady === true && s.sttReady === true && s.vehicleConnected === true && typeof s.uxRestricted === 'boolean';
-          fs.writeFileSync(`${dest}/verification.json`, JSON.stringify({bootCompleted:true,nativeStatusRead:true,sdkReady:ready,visualReviewRequired:true,audioVerified:false,microphoneVerified:false,fullConversationVerified:false}, null, 2));
+          const ready = isReady(result);
+          fs.writeFileSync(`${dest}/verification.json`, JSON.stringify({bootCompleted:true,nativeStatusRead:result!==null,sdkReady:ready,refreshedVehicle,visualReviewRequired:true,audioVerified:false,microphoneVerified:false,fullConversationVerified:false}, null, 2));
           if (!ready) throw new Error('App launched but one or more Pleos services are not ready. Inspect native-sdk-status.json; runtime integration is partial.');
           JS
+      - name: Record real UI journey with example answers (silent)
+        if: success() && steps.sdk_readiness.outcome == 'success'
+        timeout-minutes: 5
+        run: |
+          # Native instrumentation also requires actual SDK readiness and unrestricted
+          # AAOS UX before every action. No JS, SDK, or VHAL values are substituted.
+          adb install -r pleos-demo/android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk > "$EVIDENCE/test-apk-install.log"
+          adb shell screenrecord --size 1280x720 --bit-rate 4000000 --time-limit 180 /sdcard/pleos-journey.mp4 > "$EVIDENCE/journey-screenrecord.log" 2>&1 &
+          recorder=$!
+          instrument_result=0
+          timeout 165 adb shell am instrument -w -r \
+            -e allowPleosJourney true \
+            -e class ai.projectshu.musicdiary.pleosdemo.PleosJourneyTest \
+            ai.projectshu.musicdiary.pleosdemo.test/androidx.test.runner.AndroidJUnitRunner \
+            > "$EVIDENCE/journey-instrumentation.log" 2>&1 || instrument_result=$?
+          adb shell pkill -2 screenrecord || true
+          wait "$recorder" || true
+          timeout 30 adb pull /sdcard/pleos-journey.mp4 "$EVIDENCE/pleos-native-journey-silent.mp4" > "$EVIDENCE/journey-video-pull.log" 2>&1 || true
+          timeout 30 adb pull \
+            "/sdcard/Android/data/$APP_ID/files/journey-evidence/" \
+            "$EVIDENCE/journey-evidence" > "$EVIDENCE/journey-evidence-pull.log" 2>&1 || true
+          if [ "$instrument_result" -ne 0 ]; then
+            adb shell am force-stop "$APP_ID" || true
+          fi
+          INSTRUMENT_RESULT="$instrument_result" python3 - <<'PY'
+          import json, os, pathlib
+          evidence = pathlib.Path(os.environ['EVIDENCE'])
+          result_path = evidence / 'journey-evidence' / 'result.json'
+          result = json.loads(result_path.read_text()) if result_path.exists() else {}
+          video = evidence / 'pleos-native-journey-silent.mp4'
+          log = (evidence / 'journey-instrumentation.log').read_text(errors='replace')
+          process_ok = os.environ['INSTRUMENT_RESULT'] == '0'
+          test_ok = result.get('passed') is True and 'FAILURES!!!' not in log and 'INSTRUMENTATION_FAILED' not in log
+          video_exists = video.is_file() and video.stat().st_size > 0
+          summary = {'instrumentationExit': int(os.environ['INSTRUMENT_RESULT']), 'testPassed': test_ok,
+                     'videoCaptured': video_exists, 'passed': process_ok and test_ok and video_exists,
+                     'interaction': 'real accessibility button taps with example answers',
+                     'visualReviewRequired': True, 'acousticOutputVerified': False, 'microphoneRecognitionVerified': False}
+          (evidence / 'journey-verification.json').write_text(json.dumps(summary, indent=2))
+          if not summary['passed']:
+              raise SystemExit('Real UI journey did not pass or capture is incomplete. Evidence preserved; inspect journey-verification.json, result.json, and instrumentation log.')
+          print('Real accessibility journey passed and silent video exists; manual visual review remains required.')
+          PY
       - name: Confirm captures separately from SDK readiness
         if: always() && steps.capture.outcome == 'success'
         run: |
@@ -235,7 +320,7 @@ jobs:
           df -h > "$EVIDENCE/disk-after.txt"
           echo '### Pleos emulator experiment' >> "$GITHUB_STEP_SUMMARY"
           echo 'Inspect native-sdk-status.json and app-screen.png. ADB/device visibility alone is not SDK success.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Startup video is silent, not a completed voice/music journey. Audio, microphone and real-vehicle behavior remain unverified.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Startup and UI journey captures are silent. Check journey-verification.json before claiming a completed UI journey. Audio, microphone and real-vehicle behavior remain unverified.' >> "$GITHUB_STEP_SUMMARY"
       - name: Upload diagnostics and silent captures only
         if: always() && inputs.acknowledge_pleos_license
         uses: actions/upload-artifact@v4
