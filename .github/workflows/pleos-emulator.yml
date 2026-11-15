@@ -23,7 +23,6 @@ jobs:
     env:
       EVIDENCE: ${{ github.workspace }}/pleos-evidence
       APP_ID: ai.projectshu.musicdiary.pleosdemo
-      ANDROID_AVD_HOME: ${{ runner.temp }}/pleos-avd
       PLEOS_IMAGE: system-images;android-34;pleos_car_emulator;x86_64
       PLEOS_REPOSITORY: https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-sys-img.xml
     steps:
@@ -42,6 +41,8 @@ jobs:
         id: prepare
         run: |
           mkdir -p "$EVIDENCE"
+          echo "ANDROID_AVD_HOME=$RUNNER_TEMP/pleos-avd" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/pleos-avd"
           printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE/commit.txt"
           df -h > "$EVIDENCE/disk-before.txt"
       - uses: actions/setup-java@v4
