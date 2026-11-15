@@ -60,11 +60,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends libpulse0
           sdkmanager emulator > "$EVIDENCE/google-emulator-install.log" 2>&1
           echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
-          ldd "$ANDROID_HOME/emulator/qemu/linux-x86_64/qemu-system-x86_64" > "$EVIDENCE/emulator-linked-libraries.txt" 2>&1
-          if grep -F 'not found' "$EVIDENCE/emulator-linked-libraries.txt"; then
-            echo '::error::Linux emulator shared libraries are missing. Stopping before Pleos image download.'
-            exit 1
-          fi
+          # The launcher sets paths for bundled Qt/libc++/emulator libraries.
+          # Raw qemu ldd does not reproduce that environment: diagnostic only.
+          ldd "$ANDROID_HOME/emulator/qemu/linux-x86_64/qemu-system-x86_64" > "$EVIDENCE/emulator-linked-libraries.txt" 2>&1 || true
           if ! "$ANDROID_HOME/emulator/emulator" -version > "$EVIDENCE/emulator-version.txt" 2>&1; then
             cat "$EVIDENCE/emulator-version.txt"
             echo '::error::Google emulator runtime check failed before Pleos image download.'
@@ -165,7 +163,9 @@ jobs:
         id: capture
         timeout-minutes: 3
         run: |
-          adb install -r pleos-demo/android/app/build/outputs/apk/debug/app-debug.apk > "$EVIDENCE/apk-install.log"
+          # Grant declared runtime permissions on this disposable emulator only.
+          # This does not bypass signature permissions or access the local Mac mic.
+          adb install -r -g pleos-demo/android/app/build/outputs/apk/debug/app-debug.apk > "$EVIDENCE/apk-install.log"
           adb shell screenrecord --size 1280x720 --bit-rate 4000000 --time-limit 35 /sdcard/pleos-startup.mp4 > "$EVIDENCE/screenrecord.log" 2>&1 &
           recorder=$!
           adb shell am start -W -n "$APP_ID/.MainActivity" > "$EVIDENCE/app-launch.txt"
