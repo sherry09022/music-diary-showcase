@@ -18,7 +18,7 @@ val syncWebAssets by tasks.registering(Sync::class) {
 android {
     namespace = "ai.projectshu.musicdiary.pleosdemo"
     compileSdk = 35
-    useLibrary("android.car")
+    useLibrary("android.car", false)
     defaultConfig {
         applicationId = "ai.projectshu.musicdiary.pleosdemo"
         minSdk = 28

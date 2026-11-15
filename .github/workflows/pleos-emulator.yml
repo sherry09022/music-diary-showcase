@@ -161,6 +161,8 @@ jobs:
             boot=$(timeout 10 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
             if [ "$boot" = 1 ]; then
               printf '1\n' > "$EVIDENCE/sys.boot_completed.txt"
+              timeout 10 adb shell pm list libraries > "$EVIDENCE/android-shared-libraries.txt" 2>&1 || true
+              timeout 10 adb shell printenv BOOTCLASSPATH > "$EVIDENCE/android-bootclasspath.txt" 2>&1 || true
               exit 0
             fi
             sleep 5

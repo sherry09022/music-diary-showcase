@@ -12,7 +12,7 @@
         android:label="음악일기 · Pleos 데모"
         android:icon="@drawable/ic_music_diary"
         android:theme="@android:style/Theme.Material.NoActionBar">
-        <uses-library android:name="android.car" android:required="true" />
+        <uses-library android:name="android.car" android:required="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

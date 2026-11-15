@@ -77,6 +77,7 @@ class MainActivity : Activity() {
     private var uxManager: CarUxRestrictionsManager? = null
     @Volatile private var uxRestricted: Boolean? = null
     @Volatile private var activeRestrictions: Int? = null
+    @Volatile private var carApiAvailable: Boolean? = null
 
     private val speechAttributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_ASSISTANT)
@@ -199,7 +200,18 @@ class MainActivity : Activity() {
             override fun onFailure(errorType: SttError) = error("stt-init", errorType.name)
         })
         runCatching { vehicle.initialize() }.onFailure { error("vehicle-init", it.javaClass.simpleName) }
-        initializeCarUx()
+        // Some AAOS builds supply car classes through the bootclasspath, not a named shared library.
+        // Keep actual UX restrictions unknown if those classes cannot be loaded.
+        carApiAvailable = runCatching {
+            Class.forName("android.car.Car", false, classLoader)
+            Class.forName("android.car.drivingstate.CarUxRestrictionsManager", false, classLoader)
+        }.isSuccess
+        if (carApiAvailable == true) {
+            runCatching { initializeCarUx() }.onFailure { error("car-ux", it.javaClass.simpleName) }
+        } else {
+            error("car-ux", "CAR_API_UNAVAILABLE")
+            publishStatus()
+        }
         main.postDelayed({ if (alive) queryVehicle() }, 1200)
     }
 
@@ -424,6 +436,7 @@ class MainActivity : Activity() {
         .put("vehicleConnected", vehicleConnected).put("parked", JSONObject.NULL)
         .put("uxRestricted", uxRestricted ?: JSONObject.NULL)
         .put("activeRestrictions", activeRestrictions ?: JSONObject.NULL)
+        .put("carApiAvailable", carApiAvailable ?: JSONObject.NULL)
         .put("musicPlaying", musicPlaying).put("positionMs", positionMs).put("durationMs", durationMs)
         .put("mode", "ON_DEVICE").put("speaking", speaking).put("listening", listening)
 
@@ -431,6 +444,7 @@ class MainActivity : Activity() {
         emit("ready", "ttsReady" to ttsReady, "sttReady" to sttReady,
             "vehicleConnected" to vehicleConnected, "parked" to JSONObject.NULL,
             "uxRestricted" to uxRestricted, "activeRestrictions" to activeRestrictions,
+            "carApiAvailable" to carApiAvailable,
             "transport" to "pleos-native", "mode" to "ON_DEVICE")
     }
 

@@ -44,7 +44,9 @@ adb shell am start -n ai.projectshu.musicdiary.pleosdemo/.MainActivity
 6. 차량 capability 실패·마이크 거절·서비스 미설치 때 미연결 상태와 복구 안내를 확인합니다.
 7. 앱을 백그라운드로 보내면 마이크·음악·TTS가 멈추는지 확인합니다.
 
-이 기기에서는 Android SDK와 Pleos 에뮬레이터가 설치되지 않았고 저장 공간이 부족하여 실제 차량 런타임을 실행하지 않았습니다. 차량 배포 승인, 운전자 주의 분산 검토, 실제 장치 오디오 검증이 완료된 제품이 아닙니다.
+이 Mac에는 Android SDK와 Pleos 에뮬레이터를 설치하지 않았습니다. 공개 GitHub Actions의 [에뮬레이터 실행 43714805239](https://github.com/sherry09022/music-diary-showcase/actions/runs/43714805239)에서는 **공식 Pleos Connect 2.1.0 OS 부팅**을 확인했지만, `android.car` 필수 공유 라이브러리 선언 때문에 APK 설치가 실패했습니다. 따라서 이 결과는 앱 실행·SDK 초기화·전체 대화 흐름 검증을 의미하지 않습니다.
+
+이 설치 문제에 대응해 Gradle과 Manifest의 `android.car`를 선택 사항으로 지정했습니다. 실제 클래스 로드를 확인한 뒤 기존 CarUxRestrictions 서비스에 연결하며, 클래스 로드나 서비스 연결에 실패하면 UX 상태는 `null`로 유지합니다. 주차나 UX 허용 상태를 임의로 설정하지 않습니다. 이 수정의 실제 앱 설치·실행은 다음 에뮬레이터 실행에서 확인해야 합니다. 차량 배포 승인, 운전자 주의 분산 검토, 실제 장치 오디오 검증은 아직 완료하지 않았습니다.
 
 ## 웹 브리지 계약
 
