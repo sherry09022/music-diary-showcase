@@ -1,18 +1,18 @@
 {
-  "schemaVersion": 2,
-  "commit": "ee6ac13192466ea45ae5e3e47537b5e77a002b7b",
-  "ci": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43719447420",
-  "apkBytes": 33993141,
-  "sha256": "1577f0c70c557082da23a18fd47bc6ae2e32b090569fd34b177e0af8108a5e53",
+  "schemaVersion": 3,
+  "commit": "75d7004411fb41ad5e649d74618187729a848773",
+  "ci": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43728649023",
+  "apkBytes": 33993137,
+  "sha256": "cbd2e5c1092ef56f60150fae2402519277d218ce8619571a4de438caf8a3a184",
   "assembleDebug": "passed",
   "lintDebug": {
     "errors": 0,
     "warnings": 10
   },
-  "webRegressionTests": 18,
+  "webRegressionTests": 23,
   "runtimeEvidence": {
-    "run": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43720666159",
-    "commit": "bce915ef9d0c0e0f042eda86a362e8f03d9a23bb",
+    "run": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43728653191",
+    "commit": "75d7004411fb41ad5e649d74618187729a848773",
     "environment": "official Pleos Connect 2.1.0 API 34 x86_64 emulator, silent Linux runner",
     "osBootVerified": true,
     "appLaunchVerified": true,
@@ -30,12 +30,39 @@
       "audibleOutputVerified": false
     },
     "uiJourney": {
-      "passed": false,
-      "lastConfirmedScreen": "age selection",
-      "failure": "After selecting 30대, the next gender-selection UI did not appear; assertion failed.",
-      "musicPlaybackVerified": false,
-      "diarySaveVerified": false,
-      "diaryReopenVerified": false
+      "passed": true,
+      "interaction": "real Android accessibility button actions with example answers; no microphone input",
+      "steps": [
+        "onboarding",
+        "state",
+        "sad emotion",
+        "need for rest",
+        "body sensation",
+        "recommendation",
+        "preview",
+        "full listening",
+        "imagery",
+        "diary saved",
+        "diary reopened"
+      ],
+      "lastConfirmedScreen": "saved diary reopened",
+      "musicPlayback": {
+        "previewPlayerStateVerified": true,
+        "fullListeningPlayerStateVerified": true,
+        "ownMediaPlayerPositionAdvanced": true,
+        "audioStreamActiveObserved": true,
+        "fullListeningCheckpoint": {
+          "musicPlaying": true,
+          "positionMs": 15725,
+          "durationMs": 90044
+        },
+        "acousticOutputVerified": false
+      },
+      "diarySaveVerified": true,
+      "diaryReopenVerified": true,
+      "savedDiaryCount": 1,
+      "image": "pre-created comforter example; not generated during the test",
+      "publicResult": "downloads/native-journey-verification.json"
     },
     "evidenceFiles": [
       "native-sdk-status.json",
@@ -47,7 +74,6 @@
   "microphoneVerified": false,
   "physicalSpeakerVerified": false,
   "physicalVehicleVerified": false,
-  "recordedVideo": "web-simulator",
   "apiKeysRequired": false,
   "nativeRecording": {
     "path": "video/music-diary-pleos-native-onboarding-silent.mp4",
@@ -67,6 +93,32 @@
         "diary saving",
         "microphone recognition",
         "physical speaker output"
+      ]
+    }
+  },
+  "webRecording": {
+    "path": "video/music-diary-pleos-web-demo.mp4",
+    "environment": "web simulator; not Pleos SDK execution",
+    "interaction": "scripted example answers; not microphone recognition"
+  },
+  "nativeJourneyRecording": {
+    "path": "video/music-diary-pleos-native-journey-silent.mp4",
+    "poster": "video/music-diary-pleos-native-journey-poster.jpg",
+    "sourceRun": "https://github.com/sherry09022/music-diary-showcase/actions/runs/43728653191",
+    "sourceCommit": "75d7004411fb41ad5e649d74618187729a848773",
+    "sourceRecording": "pleos-native-journey-silent.mp4",
+    "sourceDurationSeconds": 348.821878,
+    "verificationResult": "downloads/native-journey-verification.json",
+    "scope": {
+      "shown": "Actual official Pleos OS, connected ON_DEVICE SDK, onboarding through native music player operation, imagery, diary saving and reopening",
+      "interaction": "real Android accessibility button actions with example answers; not microphone input",
+      "musicVerification": "native MediaPlayer playback state and advancing position; AudioManager active stream observed",
+      "image": "pre-created comforter example; no image generation API call",
+      "audio": "silent; no audio track",
+      "notVerified": [
+        "microphone recognition",
+        "acoustic speaker output",
+        "physical vehicle behavior"
       ]
     }
   }

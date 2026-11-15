@@ -1,0 +1,427 @@
+{
+  "passed": true,
+  "interaction": "real Android accessibility button actions",
+  "sdkState": {
+    "transport": "pleos-native",
+    "ttsReady": true,
+    "sttReady": true,
+    "vehicleConnected": true,
+    "parked": null,
+    "uxRestricted": false,
+    "activeRestrictions": 0,
+    "carApiAvailable": true,
+    "musicPlaying": false,
+    "positionMs": 23377,
+    "durationMs": 90044,
+    "mode": "ON_DEVICE",
+    "speaking": false,
+    "listening": false
+  },
+  "steps": [
+    {
+      "checkpoint": "00-native-ready",
+      "sdkState": {
+        "transport": "pleos-native",
+        "ttsReady": true,
+        "sttReady": true,
+        "vehicleConnected": true,
+        "parked": null,
+        "uxRestricted": false,
+        "activeRestrictions": 0,
+        "carApiAvailable": true,
+        "musicPlaying": false,
+        "positionMs": 0,
+        "durationMs": 0,
+        "mode": "ON_DEVICE",
+        "speaking": false,
+        "listening": false
+      },
+      "elapsedMs": 299605
+    },
+    {
+      "action": "accessibility-click",
+      "label": "직접 체험",
+      "actualLabel": "직접 체험",
+      "actionAccepted": true,
+      "bounds": "[876,1049][1007,1114]",
+      "elapsedMs": 306532
+    },
+    {
+      "action": "tap",
+      "label": "직접 체험",
+      "observedNextUi": "30대",
+      "elapsedMs": 308631
+    },
+    {
+      "action": "accessibility-click",
+      "label": "30대",
+      "actualLabel": "30대",
+      "actionAccepted": true,
+      "bounds": "[1277,1181][1467,1249]",
+      "elapsedMs": 322980
+    },
+    {
+      "action": "tap",
+      "label": "30대",
+      "observedNextUi": "말하지 않기",
+      "elapsedMs": 328701
+    },
+    {
+      "action": "accessibility-click",
+      "label": "말하지 않기",
+      "actualLabel": "말하지 않기",
+      "actionAccepted": true,
+      "bounds": "[1935,1181][2512,1249]",
+      "elapsedMs": 338996
+    },
+    {
+      "action": "tap",
+      "label": "말하지 않기",
+      "observedNextUi": "피아노 연주곡을 즐겨 들어요",
+      "elapsedMs": 340763
+    },
+    {
+      "action": "accessibility-click",
+      "label": "피아노 연주곡을 즐겨 들어요",
+      "actualLabel": "피아노 연주곡을 즐겨 들어요",
+      "actionAccepted": true,
+      "bounds": "[876,1181][1422,1249]",
+      "elapsedMs": 349951
+    },
+    {
+      "action": "tap",
+      "label": "피아노 연주곡을 즐겨 들어요",
+      "observedNextUi": "first track choice",
+      "elapsedMs": 351999
+    },
+    {
+      "checkpoint": "01-onboarding-taste",
+      "sdkState": {
+        "transport": "pleos-native",
+        "ttsReady": true,
+        "sttReady": true,
+        "vehicleConnected": true,
+        "parked": null,
+        "uxRestricted": false,
+        "activeRestrictions": 0,
+        "carApiAvailable": true,
+        "musicPlaying": false,
+        "positionMs": 0,
+        "durationMs": 0,
+        "mode": "ON_DEVICE",
+        "speaking": false,
+        "listening": false
+      },
+      "elapsedMs": 359813
+    },
+    {
+      "action": "accessibility-click",
+      "label": "first track",
+      "actualLabel": "1. Reverie",
+      "actionAccepted": true,
+      "bounds": "[876,1181][1407,1249]",
+      "elapsedMs": 363082
+    },
+    {
+      "action": "tap first track",
+      "elapsedMs": 365873
+    },
+    {
+      "checkpoint": "02-taste-preview",
+      "sdkState": {
+        "transport": "pleos-native",
+        "ttsReady": true,
+        "sttReady": true,
+        "vehicleConnected": true,
+        "parked": null,
+        "uxRestricted": false,
+        "activeRestrictions": 0,
+        "carApiAvailable": true,
+        "musicPlaying": true,
+        "positionMs": 10777,
+        "durationMs": 90044,
+        "mode": "ON_DEVICE",
+        "speaking": false,
+        "listening": false
+      },
+      "elapsedMs": 377492
+    },
+    {
+      "action": "accessibility-click",
+      "label": "이 곡으로 감상하기",
+      "actualLabel": "이 곡으로 감상하기",
+      "actionAccepted": true,
+      "bounds": "[2069,1181][2512,1249]",
+      "elapsedMs": 382377
+    },
+    {
+      "action": "tap",
+      "label": "이 곡으로 감상하기",
+      "observedNextUi": "오늘 일이 많아서 피곤해요",
+      "elapsedMs": 384456
+    },
+    {
+      "action": "accessibility-click",
+      "label": "오늘 일이 많아서 피곤해요",
+      "actualLabel": "오늘 일이 많아서 피곤해요",
+      "actionAccepted": true,
+      "bounds": "[876,1181][1477,1249]",
+      "elapsedMs": 395040
+    },
+    {
+      "action": "tap",
+      "label": "오늘 일이 많아서 피곤해요",
+      "observedNextUi": "살짝 슬픈 것 같아요",
+      "elapsedMs": 396652
+    },
+    {
+      "action": "accessibility-click",
+      "label": "살짝 슬픈 것 같아요",
+      "actualLabel": "살짝 슬픈 것 같아요",
+      "actionAccepted": true,
+      "bounds": "[876,1181][1473,1249]",
+      "elapsedMs": 404710
+    },
+    {
+      "action": "tap",
+      "label": "살짝 슬픈 것 같아요",
+      "observedNextUi": "휴식이 필요해요",
+      "elapsedMs": 406135
+    },
+    {
+      "action": "accessibility-click",
+      "label": "휴식이 필요해요",
+      "actualLabel": "휴식이 필요해요",
+      "actionAccepted": true,
+      "bounds": "[876,1181][1408,1249]",
+      "elapsedMs": 413796
+    },
+    {
+      "action": "tap",
+      "label": "휴식이 필요해요",
+      "observedNextUi": "등에서 따스함이 느껴져요",
+      "elapsedMs": 415416
+    },
+    {
+      "action": "accessibility-click",
+      "label": "등에서 따스함이 느껴져요",
+      "actualLabel": "등에서 따스함이 느껴져요",
+      "actionAccepted": true,
+      "bounds": "[876,1181][1419,1249]",
+      "elapsedMs": 424545
+    },
+    {
+      "action": "tap",
+      "label": "등에서 따스함이 느껴져요",
+      "observedNextUi": "personal track choices",
+      "elapsedMs": 426033
+    },
+    {
+      "checkpoint": "03-personal-recommendation",
+      "sdkState": {
+        "transport": "pleos-native",
+        "ttsReady": true,
+        "sttReady": true,
+        "vehicleConnected": true,
+        "parked": null,
+        "uxRestricted": false,
+        "activeRestrictions": 0,
+        "carApiAvailable": true,
+        "musicPlaying": false,
+        "positionMs": 16848,
+        "durationMs": 90044,
+        "mode": "ON_DEVICE",
+        "speaking": false,
+        "listening": false
+      },
+      "elapsedMs": 434199
+    },
+    {
+      "action": "accessibility-click",
+      "label": "first track",
+      "actualLabel": "1. Reverie",
+      "actionAccepted": true,
+      "bounds": "[876,1181][1407,1249]",
+      "elapsedMs": 438365
+    },
+    {
+      "action": "tap first track",
+      "elapsedMs": 441165
+    },
+    {
+      "checkpoint": "04-music-preview",
+      "sdkState": {
+        "transport": "pleos-native",
+        "ttsReady": true,
+        "sttReady": true,
+        "vehicleConnected": true,
+        "parked": null,
+        "uxRestricted": false,
+        "activeRestrictions": 0,
+        "carApiAvailable": true,
+        "musicPlaying": true,
+        "positionMs": 10341,
+        "durationMs": 90044,
+        "mode": "ON_DEVICE",
+        "speaking": false,
+        "listening": false
+      },
+      "elapsedMs": 452820
+    },
+    {
+      "action": "accessibility-click",
+      "label": "이 곡으로 감상하기",
+      "actualLabel": "이 곡으로 감상하기",
+      "actionAccepted": true,
+      "bounds": "[2069,1181][2512,1249]",
+      "elapsedMs": 457324
+    },
+    {
+      "action": "tap",
+      "label": "이 곡으로 감상하기",
+      "observedNextUi": "감상 마치기",
+      "elapsedMs": 459750
+    },
+    {
+      "checkpoint": "05-listening",
+      "sdkState": {
+        "transport": "pleos-native",
+        "ttsReady": true,
+        "sttReady": true,
+        "vehicleConnected": true,
+        "parked": null,
+        "uxRestricted": false,
+        "activeRestrictions": 0,
+        "carApiAvailable": true,
+        "musicPlaying": true,
+        "positionMs": 15725,
+        "durationMs": 90044,
+        "mode": "ON_DEVICE",
+        "speaking": false,
+        "listening": false
+      },
+      "elapsedMs": 482560
+    },
+    {
+      "action": "accessibility-click",
+      "label": "감상 마치기",
+      "actualLabel": "감상 마치기",
+      "actionAccepted": true,
+      "bounds": "[1711,1181][2512,1249]",
+      "elapsedMs": 489627
+    },
+    {
+      "action": "tap",
+      "label": "감상 마치기",
+      "observedNextUi": "포근한 이불의 느낌이 생각났어요",
+      "elapsedMs": 491946
+    },
+    {
+      "action": "accessibility-click",
+      "label": "포근한 이불의 느낌이 생각났어요",
+      "actualLabel": "포근한 이불의 느낌이 생각났어요",
+      "actionAccepted": true,
+      "bounds": "[876,1181][2512,1249]",
+      "elapsedMs": 498325
+    },
+    {
+      "action": "tap",
+      "label": "포근한 이불의 느낌이 생각났어요",
+      "observedNextUi": "이 이미지로 일기 저장",
+      "elapsedMs": 500803
+    },
+    {
+      "checkpoint": "06-imagery",
+      "sdkState": {
+        "transport": "pleos-native",
+        "ttsReady": true,
+        "sttReady": true,
+        "vehicleConnected": true,
+        "parked": null,
+        "uxRestricted": false,
+        "activeRestrictions": 0,
+        "carApiAvailable": true,
+        "musicPlaying": false,
+        "positionMs": 23377,
+        "durationMs": 90044,
+        "mode": "ON_DEVICE",
+        "speaking": false,
+        "listening": false
+      },
+      "elapsedMs": 507486
+    },
+    {
+      "action": "accessibility-click",
+      "label": "이 이미지로 일기 저장",
+      "actualLabel": "이 이미지로 일기 저장",
+      "actionAccepted": true,
+      "bounds": "[876,1181][1720,1249]",
+      "elapsedMs": 513183
+    },
+    {
+      "action": "tap",
+      "label": "이 이미지로 일기 저장",
+      "observedNextUi": "일기 다시 보기",
+      "elapsedMs": 515128
+    },
+    {
+      "checkpoint": "07-diary-saved",
+      "sdkState": {
+        "transport": "pleos-native",
+        "ttsReady": true,
+        "sttReady": true,
+        "vehicleConnected": true,
+        "parked": null,
+        "uxRestricted": false,
+        "activeRestrictions": 0,
+        "carApiAvailable": true,
+        "musicPlaying": false,
+        "positionMs": 23377,
+        "durationMs": 90044,
+        "mode": "ON_DEVICE",
+        "speaking": false,
+        "listening": false
+      },
+      "elapsedMs": 522423
+    },
+    {
+      "action": "accessibility-click",
+      "label": "일기 다시 보기",
+      "actualLabel": "일기 다시 보기",
+      "actionAccepted": true,
+      "bounds": "[876,1181][1679,1249]",
+      "elapsedMs": 527257
+    },
+    {
+      "action": "tap",
+      "label": "일기 다시 보기",
+      "observedNextUi": "saved diary list status",
+      "elapsedMs": 528646
+    },
+    {
+      "checkpoint": "08-diary-reopened",
+      "sdkState": {
+        "transport": "pleos-native",
+        "ttsReady": true,
+        "sttReady": true,
+        "vehicleConnected": true,
+        "parked": null,
+        "uxRestricted": false,
+        "activeRestrictions": 0,
+        "carApiAvailable": true,
+        "musicPlaying": false,
+        "positionMs": 23377,
+        "durationMs": 90044,
+        "mode": "ON_DEVICE",
+        "speaking": false,
+        "listening": false
+      },
+      "elapsedMs": 533075
+    }
+  ],
+  "audioStreamActiveObserved": true,
+  "ownMediaPlayerPositionAdvanced": true,
+  "acousticOutputVerified": false,
+  "microphoneRecognitionVerified": false,
+  "image": "pre-created comforter example, not generated during this test"
+}

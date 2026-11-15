@@ -11,13 +11,13 @@
 ## Pleos Connect 별도 개발 데모
 
 - [녹화한 웹 시연 영상](https://sherry09022.github.io/music-diary-showcase/pleos-demo/watch.html)
-- [실제 Pleos OS 실행 확인 · 시작과 연령 질문 · 약 30초 무음](https://sherry09022.github.io/music-diary-showcase/pleos-demo/watch.html#native)
+- [실제 Pleos OS 전체 흐름 · 취향부터 일기 저장까지 · 약 5분 49초 무음](https://sherry09022.github.io/music-diary-showcase/pleos-demo/watch.html#native)
 - [웹 시연 인스타용 세로 편집본 · 1080×1920](https://sherry09022.github.io/music-diary-showcase/pleos-demo/video/music-diary-web-instagram-vertical.mp4)
 - [차량용 웹 데모 체험](https://sherry09022.github.io/music-diary-showcase/pleos-demo/)
 - [별도 소스·SDK 구성](pleos-demo/) · [Android 빌드 검증](https://github.com/sherry09022/music-diary-showcase/actions/workflows/pleos-demo.yml)
 - [Pleos 차량 환경용 데모 APK](https://sherry09022.github.io/music-diary-showcase/pleos-demo/downloads/music-diary-pleos-debug.apk)
 
-`pleos-demo/`는 기존 앱과 릴스에 영향을 주지 않는 별도 프로젝트입니다. 웹은 차량값을 모의로 사용하는 실행 가능한 체험판이며, Android 프로젝트는 실제 Pleos STT·TTS·Vehicle SDK를 사용합니다. 실제 차량/플레오스 에뮬레이터 실행 여부는 해당 폴더의 검증 안내를 참고하세요.
+`pleos-demo/`는 기존 앱과 릴스에 영향을 주지 않는 별도 프로젝트입니다. 웹은 차량값을 모의로 사용하는 체험판이며, Android 프로젝트는 실제 Pleos STT·TTS·Vehicle SDK를 사용합니다. 공식 Pleos OS 에뮬레이터에서는 예시 버튼으로 온보딩부터 음악 재생 상태·일기 저장·재열기까지 확인했습니다. 실제 마이크 인식·스피커로 들리는 소리·실차 동작은 미검증입니다. [실제 실행 검증 기록](pleos-demo/downloads/native-journey-verification.json)과 [검증 범위](pleos-demo/downloads/build-verification.json)를 함께 제공합니다.
 
 ## 릴스의 이야기
 

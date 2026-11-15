@@ -10,10 +10,10 @@
 | 음성 인식 | SpeechToText 3.3.1, `Mode.ON_DEVICE`, 중간·최종 텍스트 전달 | 실제 SDK 초기화 확인. 마이크 음성 인식은 미검증 |
 | 차량 정보 | Vehicle 2.3.2, capability 확인 후 브레이크 페달 조회 | 실제 에뮬레이터 서비스 연결 확인. 실차 동작은 미검증 |
 | 화면 제한 | 표준 AAOS `CarUxRestrictionsManager` 조회·변경 구독 | 실제 에뮬레이터에서 `uxRestricted: false`, `activeRestrictions: 0` 확인 |
-| 음악·일기 | Android MediaPlayer와 WebView 일기 저장 | 계측이 연령 선택 다음 화면에서 중단되어 본 감상·일기 저장까지 미검증 |
-| 빌드 | GitHub Actions에서 `assembleDebug` + `lintDebug` | APK 소스 `ee6ac13` [실행 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43719447420), 웹 회귀 18개 통과 |
+| 음악·일기 | Android MediaPlayer와 WebView 일기 저장 | 실제 OS에서 미리듣기·본 감상의 플레이어 시간 증가와 오디오 활성 상태, 심상 일기 저장·재열기 확인. 가청 출력은 미검증 |
+| 빌드 | GitHub Actions에서 `assembleDebug` + `lintDebug` | APK 소스 `75d7004` [실행 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43728649023), 웹 회귀 23개 통과 |
 
-공개 debug APK의 소스는 `ee6ac13192466ea45ae5e3e47537b5e77a002b7b`이며, 파일은 33,993,141바이트입니다. SHA-256은 `1577f0c70c557082da23a18fd47bc6ae2e32b090569fd34b177e0af8108a5e53`입니다. Lint는 오류 0개·경고 10개로 통과했습니다. 이 빌드와 실제 실행 검증의 커밋·범위는 [검증 기록](../downloads/build-verification.json)에 각각 기록하며, 이후 APK에 같은 해시를 적용하지 않습니다.
+공개 debug APK의 소스는 `75d7004411fb41ad5e649d74618187729a848773`이며, 파일은 33,993,137바이트입니다. SHA-256은 `cbd2e5c1092ef56f60150fae2402519277d218ce8619571a4de438caf8a3a184`입니다. Lint는 오류 0개·경고 10개로 통과했습니다. 이 빌드와 실제 실행 검증의 커밋·범위는 [검증 기록](../downloads/build-verification.json)에 각각 기록하며, 이후 APK에 같은 해시를 적용하지 않습니다.
 
 **브레이크 페달을 밟았다는 값으로 주차 상태를 추측하지 않습니다.** 이 SDK 버전의 공개 Brake 인터페이스에는 주차 브레이크 조회가 없습니다. `parked`는 항상 `null`로 전달합니다. 폼·일기 화면 허용 여부는 별도로 연결한 표준 AAOS `CarUxRestrictionsManager`의 `isRequiresDistractionOptimization()` 결과를 따릅니다. `uxRestricted === false`일 때만 전체 화면을 허용하고, 연결 전·오류·연결 해제 상태는 `null`로 보내 제한을 유지합니다. 제한이 켜지면 `activeRestrictions`의 NO_KEYBOARD / NO_SETUP / NO_TEXT_MESSAGE / NO_VOICE_TRANSCRIPTION 등 비트도 준수해야 합니다. 이 앱은 실제 차량에서 운전자 주의 분산 검증을 마치지 않았으며 manifest에 distractionOptimized로 승인된 것처럼 선언하지 않았습니다. 이동 중 OS가 앱 화면을 차단할 수 있습니다.
 
@@ -44,9 +44,9 @@ adb shell am start -n ai.projectshu.musicdiary.pleosdemo/.MainActivity
 6. 차량 capability 실패·마이크 거절·서비스 미설치 때 미연결 상태와 복구 안내를 확인합니다.
 7. 앱을 백그라운드로 보내면 마이크·음악·TTS가 멈추는지 확인합니다.
 
-공개 GitHub Actions의 [실제 실행 43720666159](https://github.com/sherry09022/music-diary-showcase/actions/runs/43720666159), 커밋 `bce915ef9d0c0e0f042eda86a362e8f03d9a23bb`에서 공식 Pleos OS와 앱 실행, TTS/STT/Vehicle 준비 및 AAOS UX 허용 상태를 확인했습니다. 로그에서는 한국어 ON_DEVICE 음성의 PCM 생성과 AudioTrack 최종 기록·종료도 확인했습니다. 이는 실제 스피커로 들리는 소리를 검증한 결과는 아닙니다.
+공개 GitHub Actions의 [실제 실행 43728653191](https://github.com/sherry09022/music-diary-showcase/actions/runs/43728653191), 커밋 `75d7004411fb41ad5e649d74618187729a848773`에서 공식 Pleos OS와 앱 실행, TTS/STT/Vehicle 준비 및 AAOS UX 허용 상태를 확인했습니다. 실제 접근성 버튼으로 온보딩 → 슬픔 → 필요한 휴식 → 몸의 감각 → 추천·미리듣기 → 본 감상 → 심상 → 일기 저장·재열기까지 통과했습니다. [전체 무음 녹화](../watch.html#native)와 [계측 결과 원문](../downloads/native-journey-verification.json)을 제공합니다.
 
-전체 UI 계측은 ‘30대’를 누른 뒤 성별 화면으로 전환되지 않아 assertion으로 실패했습니다. 음악 감상·일기 저장 단계에는 도달하지 않았습니다. 실제 마이크 인식·물리 스피커 출력·실차 동작 및 차량 배포 승인은 미검증입니다. 후속 실행의 결과로 이 범위를 갱신해야 합니다.
+본 감상에서는 앱 자체 MediaPlayer의 재생 상태와 시간 증가를 검사했으며, 체크포인트에 `musicPlaying: true`, `positionMs: 15725`, `durationMs: 90044`가 기록됐습니다. 오디오 스트림 활성 상태도 확인했습니다. 심상은 미리 제작한 이불 예시 이미지이며, 사용자 예시 답변·곡과 함께 저장한 일기 1개를 다시 열었습니다. 이 결과와 한국어 ON_DEVICE PCM 생성·AudioTrack 기록 확인은 실제 스피커로 들리는 소리의 검증과 구분합니다. 실제 마이크 인식·물리 스피커 출력·실차 동작 및 차량 배포 승인은 미검증입니다.
 
 ## 웹 브리지 계약
 

@@ -7,11 +7,11 @@
 ## 설치 파일과 검증
 
 - [Pleos 차량 환경용 데모 APK](downloads/music-diary-pleos-debug.apk) · [SHA-256](downloads/SHA256SUMS)
-- [웹 시연 영상](watch.html) · [실제 Pleos OS 실행 확인 · 약 30초 무음](watch.html#native) · [빌드 검증 기록](downloads/build-verification.json)
-- [실제 SDK 컴파일·lint 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43719447420): APK 소스 `ee6ac13`, 오류 0개·경고 10개, 웹 회귀 18개 통과.
-- [실제 Pleos 실행 검증](https://github.com/sherry09022/music-diary-showcase/actions/runs/43720666159): OS·앱 실행, TTS/STT/Vehicle 준비, AAOS UX 허용 상태와 `ko-KR` ON_DEVICE 음성의 PCM 생성·AudioTrack 기록 완료를 확인했습니다. 전체 UI 여정은 연령 선택 후 다음 화면 전환 검사에서 실패했습니다.
+- [웹 시연 영상](watch.html) · [실제 Pleos OS 전체 흐름 · 약 5분 49초 무음](watch.html#native) · [빌드 검증 기록](downloads/build-verification.json)
+- [실제 SDK 컴파일·lint 성공](https://github.com/sherry09022/music-diary-showcase/actions/runs/43728649023): APK 소스 `75d7004`, 오류 0개·경고 10개, 웹 회귀 23개 통과.
+- [실제 Pleos 실행 검증](https://github.com/sherry09022/music-diary-showcase/actions/runs/43728653191): 같은 소스 `75d7004`로 공식 OS·앱 실행, TTS/STT/Vehicle 준비, AAOS UX 허용 상태를 확인했습니다. 실제 접근성 버튼으로 온보딩 → 슬픔 → 필요한 휴식 → 몸의 감각 → 곡 선택·감상 → 심상 → 일기 저장·재열기까지 통과했습니다. [계측 결과 원문](downloads/native-journey-verification.json)을 제공합니다.
 
-APK는 Pleos 서비스가 있는 차량용 Android 환경을 위한 **debug 데모**입니다. 일반 스마트폰용 설치 파일이나 App Market 배포판이 아닙니다. 네이티브 음악 감상·일기 저장까지의 전체 흐름, 실제 마이크·스피커·실차 동작은 아직 미검증입니다. [별도 에뮬레이터 실행 절차](android/EMULATOR.md)는 약관 확인 후 수동으로 진행합니다.
+APK는 Pleos 서비스가 있는 차량용 Android 환경을 위한 **debug 데모**입니다. 일반 스마트폰용 설치 파일이나 App Market 배포판이 아닙니다. 네이티브 미리듣기·본 감상에서 앱의 MediaPlayer 재생 시간 증가와 오디오 스트림 활성 상태를 확인했습니다. 실제 마이크 인식·스피커로 들리는 소리·실차 동작은 미검증입니다. [별도 에뮬레이터 실행 절차](android/EMULATOR.md)는 약관 확인 후 수동으로 진행합니다.
 
 ## 바로 체험하기
 
@@ -34,7 +34,7 @@ APK는 Pleos 서비스가 있는 차량용 Android 환경을 위한 **debug 데�
 | 심상 그림 | 미리 제작한 포근한 이불 예시. 다른 내용이면 글만 저장 | 동일. 실시간 생성 API 호출 없음 |
 | 일기 | 이 브라우저의 localStorage | 앱 WebView의 localStorage |
 
-**웹 영상은 Pleos SDK 실행 영상이 아닙니다.** 화면에 이 구분을 계속 표시합니다. 네이티브 앱은 공식 Pleos 에뮬레이터에서 실행·SDK 준비·음성 합성 데이터 처리를 확인했지만, 실제 음성이 들리는지와 마이크 인식, 음악 감상·일기 저장까지의 전체 여정은 검증하지 못했습니다. 확인 범위와 APK별 빌드 정보는 [Android 안내](android/README.md)와 [검증 기록](downloads/build-verification.json)에 구분했습니다.
+**웹 영상은 Pleos SDK 실행 영상이 아닙니다.** 화면에 이 구분을 계속 표시합니다. 별도의 네이티브 영상은 공식 Pleos OS에서 실제 SDK가 연결된 앱의 전체 UI 흐름을 녹화했습니다. 예시 버튼 입력, 음악 플레이어 상태, 심상 예시 이미지와 일기 저장·재열기를 검증했으며, 마이크 인식이나 실제 소리가 들리는지까지 검증한 것은 아닙니다. 확인 범위와 APK별 빌드 정보는 [Android 안내](android/README.md)와 [검증 기록](downloads/build-verification.json)에 구분했습니다.
 
 브레이크 페달을 주차 판단에 사용하지 않습니다. 네이티브의 물리적 `parked` 값은 알 수 없는 상태이며, 전체 UI 허용은 AAOS의 `uxRestricted === false`일 때만 가능합니다. 주행 시 전방에 집중하는 음악 감상만 제시하고 몸에 몰입하는 안내·심상 이미지·일기 편집은 제한합니다. 차량의 운전자 주의 분산 인증이나 Pleos App Market 승인을 받은 제품은 아닙니다.
 
@@ -65,7 +65,9 @@ cd pleos-demo/android
 
 2026-11-15 공개 웹 데모를 직접 실행하고 Canvas/MediaRecorder로 화면과 안내·음악을 녹화했습니다. 실제 Pleos OS 녹화가 아닌 **웹 모의 실행 화면**입니다. 인식된 대답은 자동 시연 예시이며, 실시간 마이크 검증 영상은 아닙니다.
 
-[실제 Pleos OS 실행 확인 영상](watch.html#native)은 별도 자료입니다. 실행 `43720666159`의 실제 녹화 155–185초를 원본 1280×720 해상도로 발췌했습니다. ON_DEVICE SDK가 연결된 앱의 시작→연령대 질문까지만 보여주며, 화면의 예시 버튼으로 진행한 검증입니다. 전체 음악 감상·일기 저장·마이크 인식의 검증 영상은 아닙니다. 약 30초이며 오디오 트랙이 없는 무음 영상입니다.
+[실제 Pleos OS 전체 실행 영상](watch.html#native)은 별도 자료입니다. 실행 `43728653191`의 공식 Pleos OS 화면을 녹화했으며, ON_DEVICE SDK 연결부터 온보딩·필요한 느낌 찾기·곡 선택·감상·심상 일기 저장·재열기까지 약 5분 49초로 담았습니다. 화면의 예시 버튼으로 진행했으며, 심상 그림은 미리 제작한 포근한 이불 이미지입니다. 실제 마이크 인식·가청 출력·실차 검증 영상은 아니며 오디오 트랙이 없습니다.
+
+[이전 초기 실행 기록 (약 30초 · 무음)](video/music-diary-pleos-native-onboarding-silent.mp4)도 보존합니다. 실행 `43720666159`의 155–185초 구간으로, 이 짧은 기록의 범위는 앱 시작→연령대 질문까지입니다.
 
 ## 시연 영상 캡처
 
