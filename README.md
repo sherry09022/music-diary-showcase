@@ -5,12 +5,13 @@
 음악일기는 음악을 감상하며 떠오르는 생각과 이미지를 일기로 기록하는 앱입니다. 현재의 감정과 몸의 감각을 살펴보고, 나에게 필요한 느낌에 어울리는 음악을 듣습니다. 음악과 함께 자신을 이해하고 돌보는 시간을 한 장의 일기로 남깁니다.
 
 - [제출용 영상 바로 보기](https://sherry09022.github.io/music-diary-showcase/?v=live-exit-20261115)
-- [60초 릴스 MP4 내려받기](https://sherry09022.github.io/music-diary-showcase/assets/music-diary-reel.mp4?v=live-exit-20261115)
+- [60초 릴스 MP4 내려받기](https://sherry09022.github.io/music-diary-showcase/assets/music-diary-reel.mp4?v=instagram-vertical-20261115)
 - [장면 구성 1](assets/reel-contact-sheet.jpg) · [장면 구성 2](assets/reel-contact-sheet-2.jpg)
 
 ## Pleos Connect 별도 개발 데모
 
 - [녹화한 웹 시연 영상](https://sherry09022.github.io/music-diary-showcase/pleos-demo/watch.html)
+- [웹 시연 인스타용 세로 편집본 · 1080×1920](https://sherry09022.github.io/music-diary-showcase/pleos-demo/video/music-diary-web-instagram-vertical.mp4)
 - [차량용 웹 데모 체험](https://sherry09022.github.io/music-diary-showcase/pleos-demo/)
 - [별도 소스·SDK 구성](pleos-demo/) · [Android 빌드 검증](https://github.com/sherry09022/music-diary-showcase/actions/workflows/pleos-demo.yml)
 - [Pleos 차량 환경용 데모 APK](https://sherry09022.github.io/music-diary-showcase/pleos-demo/downloads/music-diary-pleos-debug.apk)

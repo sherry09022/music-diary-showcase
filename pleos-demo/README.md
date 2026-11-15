@@ -60,6 +60,8 @@ cd pleos-demo/android
 
 [실행 화면 시연 영상 (86초 · MP4)](video/music-diary-pleos-web-demo.mp4) · [전체 시연 흐름](video/contact-sheet.jpg)
 
+[인스타용 세로 편집본 (1080×1920)](video/music-diary-web-instagram-vertical.mp4)은 같은 녹화의 전체 화면과 대화 확대 화면을 함께 배치했습니다. 원본 안내 음성과 음악을 보존했습니다.
+
 2026-11-15 공개 웹 데모를 직접 실행하고 Canvas/MediaRecorder로 화면과 안내·음악을 녹화했습니다. 실제 Pleos OS 녹화가 아닌 **웹 모의 실행 화면**입니다. 인식된 대답은 자동 시연 예시이며, 실시간 마이크 검증 영상은 아닙니다.
 
 ## 시연 영상 캡처
